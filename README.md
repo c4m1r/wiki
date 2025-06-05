@@ -1,2 +1,2 @@
 # wiki
-static wiki project for site
+static wiki project
