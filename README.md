@@ -1,2 +1,36 @@
 # wiki
-static wiki project for site
+
+This repository contains the Markdown sources for a simple static website. All documentation lives in the `docs` directory. You can render the pages into HTML using your favorite static site generator, such as **mdBook** or **Zola**.
+
+## Project Overview
+
+The project showcases a lightweight wiki with a few extra touches:
+
+- A short interactive story demonstrates how hidden pages can be used for Easter eggs.
+- Planned chapters explore the **GLPI** service-management platform.
+- Notes introduce tools for building high-performance renderers in **Rust**.
+
+## Building the Site
+
+1. Install a static site generator. We recommend `mdbook` (`cargo install mdbook`) or [Zola](https://www.getzola.org/).
+2. Run the generator against the `docs` folder. For example:
+   ```bash
+   mdbook build docs
+   ```
+   or
+   ```bash
+   zola build docs
+   ```
+3. The generated site will appear in the output directory created by your tool.
+
+No generator is bundled with this repository, so you are free to choose the one that best fits your workflow.
+
+## Hidden Pages
+
+Pages placed in `docs/hidden` or starting with an underscore (`_`) are treated as hidden. Static site generators typically ignore these files unless they are explicitly linked. You can also mark a page with `hidden: true` in its front matter. See [docs/hidden-pages.md](docs/hidden-pages.md) for details.
+
+## Contributing
+
+Feel free to expand the GLPI or Rust sections. Each Markdown file stands on its own, so you can add new topics under `docs/` and link them from the index.
+
+Start exploring in [`docs/index.md`](docs/index.md).
