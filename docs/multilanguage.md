@@ -1,6 +1,8 @@
 # Multi-language Support
 
-This project keeps content in Markdown files inside the `docs` directory. Some static site generators, such as **Zola**, provide built-in support for multiple languages. Others may require a plugin or a custom folder layout.
+This project keeps content in Markdown files inside the `docs` directory. A simple way to organise translations is to create a folder for each language. For instance this repository provides `docs/en`, `docs/ru` and `docs/es`. The generated pages will then live at URLs such as `c4m1r.github.io/wiki/en/`.
+
+Some static site generators, such as **Zola**, provide built-in support for multiple languages. Others may require a plugin or a custom folder layout.
 
 ## Using Zola
 
@@ -17,9 +19,12 @@ language_code = "en"
 
 [languages.ru]
 language_code = "ru"
+
+[languages.es]
+language_code = "es"
 ```
 
-Create `content/en` and `content/ru` for translated pages. Add a language switcher link in your templates so readers can jump between them.
+Create `content/en`, `content/ru` and `content/es` for translated pages. Add a language switcher link in your templates so readers can jump between them.
 
 ## Using mdBook
 
@@ -27,6 +32,6 @@ Create `content/en` and `content/ru` for translated pages. Add a language switch
 
 ## Manual Approach
 
-If your generator lacks built-in support, you can create folders such as `docs/en` and `docs/ru`. Duplicate the structure for each language and link between them manually. Most generators will let you select which folder to build.
+If your generator lacks built-in support, you can create folders such as `docs/en`, `docs/ru` and `docs/es`. Duplicate the structure for each language and link between them manually. Most generators will let you select which folder to build.
 
 Whichever tool you choose, keeping file names consistent across languages makes it easier to maintain translations.
