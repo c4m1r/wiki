@@ -25,5 +25,19 @@ Hidden pages are ignored by default, so remember to link to them explicitly if y
 - **Rust Renderers** – exploring libraries like `wgpu` and `Bevy`.
 - **Story** – a short narrative that demonstrates hidden pages in action.
 - **Multi-language Support** – see [multi-language guidelines](multilanguage.md).
+- **Comment Systems** – see [comments](comments.md) for options.
 
 Have fun expanding the wiki!
+
+## Landing Page Idea
+
+The home page can mimic the look of GitHub or GitLab. A short profile blurb is followed by a list of recent updates in a timeline style. Most static site generators let you pull commit messages or blog post dates via plugins, so readers can see the latest changes at a glance.
+
+For example:
+
+```
+* 2025-06-30: Added multi-language guide
+* 2025-06-29: Documented hidden pages
+```
+
+Such a feed helps visitors track progress without leaving the wiki.

@@ -32,6 +32,11 @@ No generator is bundled with this repository, so you are free to choose the one 
 
 Pages placed in `docs/hidden` or starting with an underscore (`_`) are treated as hidden. Static site generators typically ignore these files unless they are explicitly linked. You can also mark a page with `hidden: true` in its front matter. See [docs/hidden-pages.md](docs/hidden-pages.md) for details.
 
+
+## Comments and Updates
+
+See [docs/comments.md](docs/comments.md) for ways to enable Git-based comments. The landing page can also show recent activity in a GitHub-like feed to keep readers informed.
+
 ## Contributing
 
 Feel free to expand the GLPI or Rust sections. Each Markdown file stands on its own, so you can add new topics under `docs/` and link them from the index.

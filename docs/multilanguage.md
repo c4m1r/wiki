@@ -9,6 +9,18 @@ This project keeps content in Markdown files inside the `docs` directory. Some s
 3. Place translated Markdown files in the matching directories.
 4. Build the site with `zola build` and the generator will produce separate language versions.
 
+Here is a minimal example from the official Zola docs:
+
+```toml
+[languages.en]
+language_code = "en"
+
+[languages.ru]
+language_code = "ru"
+```
+
+Create `content/en` and `content/ru` for translated pages. Add a language switcher link in your templates so readers can jump between them.
+
 ## Using mdBook
 
 `mdBook` does not support multiple languages by default. A common approach is to maintain a separate book for each language and link between them. Plugins like `mdbook-i18n-helpers` can automate some tasks.
