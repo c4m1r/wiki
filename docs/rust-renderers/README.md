@@ -8,11 +8,11 @@ Rust is well suited for building fast and safe graphics pipelines. Several libra
 - Good cross-platform support.
 - Growing ecosystem for both native and web-based graphics.
 
-## Topics to Explore
+## Planned Articles
 
-- `wgpu` for modern GPU access across Vulkan, Metal, and DirectX.
-- Game engines such as `Bevy` or `Macroquad`.
-- Immediate‑mode GUI libraries like `egui` and `iced`.
-- Building WebAssembly targets to run in the browser.
+1. Getting started with `wgpu` for cross-platform GPU access.
+2. Building small games with `Bevy` or `Macroquad`.
+3. Creating user interfaces using `egui` or `iced`.
+4. Packaging applications for the web with WebAssembly.
 
-Future articles will dive deeper into these libraries and show how to integrate them into interactive projects.
+These sections will expand over time with code samples and integration tips.

@@ -9,6 +9,7 @@ The project showcases a lightweight wiki with a few extra touches:
 - A short interactive story demonstrates how hidden pages can be used for Easter eggs.
 - Planned chapters explore the **GLPI** service-management platform.
 - Notes introduce tools for building high-performance renderers in **Rust**.
+- A flexible folder layout lets you organize content in multiple languages.
 
 ## Building the Site
 
@@ -22,6 +23,8 @@ The project showcases a lightweight wiki with a few extra touches:
    zola build docs
    ```
 3. The generated site will appear in the output directory created by your tool.
+
+For multi-language sites, see [docs/multilanguage.md](docs/multilanguage.md) for tips.
 
 No generator is bundled with this repository, so you are free to choose the one that best fits your workflow.
 
