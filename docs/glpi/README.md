@@ -9,13 +9,14 @@
 - Extensible through a rich plugin ecosystem.
 - Web-based interface accessible from any modern browser.
 
-## Planned Articles
+## Guide Sections
 
-1. Introduction and key concepts.
-2. Installation and initial setup.
-3. Managing assets and inventories.
-4. Ticket management and workflows.
-5. Customization via plugins and APIs.
-6. Tips for everyday administration.
+1. [Introduction and key concepts](01-introduction.md)
+2. [Installation and initial setup](02-installation.md)
+3. [Managing assets and inventories](03-assets.md)
+4. [Ticket management and workflows](04-tickets.md)
+5. [Customization via plugins and APIs](05-plugins.md)
+6. [Tips for everyday administration](06-admin-tips.md)
+7. [Business actions and tasks](business-actions.md)
 
-These sections will be expanded in future updates to provide a more complete guide to using GLPI effectively.
+These pages give a quick overview for new admins. Future updates will expand each section with real examples and best practices.

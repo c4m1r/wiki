@@ -7,7 +7,9 @@ This repository contains the Markdown sources for a simple static website. All d
 The project showcases a lightweight wiki with a few extra touches:
 
 - A short interactive story demonstrates how hidden pages can be used for Easter eggs.
-- Planned chapters explore the **GLPI** service-management platform.
+- Guides cover the **GLPI** service-management platform in depth. Topics include
+  introduction, installation, asset management, ticket workflows, plugins,
+  everyday administration, and business tasks.
 - Notes introduce tools for building high-performance renderers in **Rust**.
 - A flexible folder layout lets you organize content in multiple languages.
 - A landing page template (e.g. in Zola) can show recent activity in a GitHub-like timeline.
@@ -44,3 +46,11 @@ When using Zola you can implement this feed on the main index page with a custom
 Feel free to expand the GLPI or Rust sections. Each Markdown file stands on its own, so you can add new topics under `docs/` and link them from the index.
 
 Start exploring in [`docs/index.md`](docs/index.md), which links to the English, Russian and Spanish sections.
+
+## Planned GLPI Articles
+
+The GLPI guides will eventually cover more advanced subjects, such as:
+
+- Monitoring ticket activity and generating reports
+- Importing inventory data from other systems
+- Managing multi-entity setups for large organizations

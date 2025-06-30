@@ -25,7 +25,7 @@ Hidden pages are ignored by default, so remember to link to them explicitly if y
 
 ## Planned Sections
 
-- **CRM GLPI** – deployment and everyday administration tips.
+- [**CRM GLPI**](glpi/README.md) – deployment and everyday administration tips.
 - **Rust Renderers** – exploring libraries like `wgpu` and `Bevy`.
 - **Story** – a short narrative that demonstrates hidden pages in action.
 - **Multi-language Support** – see [multi-language guidelines](multilanguage.md).
