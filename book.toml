@@ -1,0 +1,17 @@
+[book]
+authors = ["Lut99"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Ruby's Diary"
+
+
+[output.html]
+theme = "theme"
+default-theme = "dnd"
+preferred-dark-theme = "dnd"
+smart-punctuation = true
+mathjax-support = true
+git-repository-url = "https://github.com/Lut99/rubies-diary"
+git-repository-icon = "fa-github"
+site-url = "/"
