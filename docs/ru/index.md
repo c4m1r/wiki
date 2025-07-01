@@ -6,3 +6,4 @@
 * [Español](../es/index.md)
 * [Категория 1С](1c/index.md)
 * [Категория Скриптинг](scripting/index.md)
+* [Категория Фотосъемка](photo/index.md)
