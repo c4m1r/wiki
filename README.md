@@ -1,3 +1,5 @@
+https://rust-lang.github.io/mdBook/continuous-integration.html
+
 # wiki
 
 This repository contains the Markdown sources for a simple static website. All documentation lives in the `docs` directory. The content is organised by language under folders like `docs/en`, `docs/ru` and `docs/es`. You can render the pages into HTML using your favorite static site generator, such as **mdBook** or **Zola**.
