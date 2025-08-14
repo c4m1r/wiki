@@ -1,0 +1,12 @@
+image: rust:latest
+
+pages:
+  script:
+    - cargo install mdbook --vers 0.4.52
+    - mdbook build
+    - mv book public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
