@@ -2,6 +2,46 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('es-search-form');
   const input = document.getElementById('es-search-input');
   const overlay = document.getElementById('es-search-overlay');
+  const soundToggle = document.getElementById('sound-toggle');
+
+  let soundEnabled = false;
+  let soundCount = 0;
+  let audioCtx;
+
+  function playTone(freq) {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.1;
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  }
+
+  if (soundToggle && input) {
+    soundToggle.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundCount = 0;
+      soundToggle.classList.toggle('active', soundEnabled);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (!soundEnabled) return;
+      if (e.key.length === 1) {
+        const pos = soundCount % 5;
+        if (pos < 3) {
+          playTone(440);
+        } else {
+          playTone(660);
+        }
+        soundCount++;
+      }
+    });
+  }
 
   if (form && input && overlay) {
     input.addEventListener('input', () => {

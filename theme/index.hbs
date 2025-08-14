@@ -56,6 +56,7 @@
     <body class="sidebar-visible no-js">
     <div id="body-container">
         <div id="ticker"><span id="ticker-text"></span></div>
+        <div id="visitor-counter"></div>
         <!-- Provide site root to javascript -->
         <script>
             var path_to_root = "{{ path_to_root }}";
@@ -189,6 +190,7 @@
                             <div class="es-search-wrapper">
                                 <input type="text" id="es-search-input" placeholder="Search..." autocomplete="off">
                                 <div id="es-search-overlay"></div>
+                                <img id="sound-toggle" src="{{ path_to_root }}favicon.png" alt="Sound mode toggle" title="Sound mode">
                             </div>
                         </form>
                     </div>

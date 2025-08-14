@@ -8,6 +8,12 @@
   position: relative;
 }
 
+.es-search-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
 #es-search-input {
   width: 150px;
   padding: 4px 8px;
@@ -21,6 +27,7 @@
   position: absolute;
   left: 0;
   top: 0;
+  width: 150px;
   padding: 4px 8px;
   pointer-events: none;
   white-space: nowrap;
@@ -29,6 +36,18 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: rainbow 5s linear infinite;
+}
+
+#sound-toggle {
+  width: 16px;
+  height: 16px;
+  margin-left: 5px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+#sound-toggle.active {
+  opacity: 1;
 }
 
 @keyframes rainbow {
@@ -67,4 +86,15 @@
 @keyframes marquee {
   from { transform: translateX(0%); }
   to { transform: translateX(-100%); }
+}
+
+#visitor-counter {
+  position: fixed;
+  bottom: 5px;
+  left: 5px;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.9em;
 }
