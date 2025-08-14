@@ -55,6 +55,7 @@
     </head>
     <body class="sidebar-visible no-js">
     <div id="body-container">
+        <div id="ticker"><span id="ticker-text"></span></div>
         <!-- Provide site root to javascript -->
         <script>
             var path_to_root = "{{ path_to_root }}";
@@ -184,7 +185,12 @@
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
                         {{/if}}
-
+                        <form id="es-search-form" class="es-search-form" action="#">
+                            <div class="es-search-wrapper">
+                                <input type="text" id="es-search-input" placeholder="Search..." autocomplete="off">
+                                <div id="es-search-overlay"></div>
+                            </div>
+                        </form>
                     </div>
                 </div>
 

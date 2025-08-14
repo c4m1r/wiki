@@ -15,3 +15,8 @@ mathjax-support = true
 git-repository-url = "https://github.com/c4m1r/wiki"
 git-repository-icon = "fa-github"
 site-url = "/wiki/"
+additional-js = ["js/search.js", "js/ticker.js"]
+additional-css = ["css/custom.css"]
+
+[output.html.search]
+enable = false
