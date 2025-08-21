@@ -1,7 +1,6 @@
 # Summary
-- [Introduction](./introduction.md)
 
----
+- [Introduction](./introduction.md)
 - [THE CURSE OF STRAHD](./curse_of_strahd/overview.md)
     - [Session 1](./curse_of_strahd/session_1.md)
     - [Session 2](./curse_of_strahd/session_2.md)

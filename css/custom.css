@@ -19,7 +19,7 @@
   padding: 4px 8px;
   color: transparent;
   background: none;
-  border: 1px solid #ccc;
+  border: 1px solid var(--sidebar-fg);
   border-radius: 4px;
 }
 
@@ -65,15 +65,20 @@
   top: 80px;
   width: 200px;
   padding: 10px;
-  background: #f5f5f5;
-  border-left: 1px solid #ccc;
+  background: var(--bg);
+  border-left: 1px solid var(--sidebar-fg);
 }
 
 #ticker {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
+  background: var(--bg);
+  border-bottom: 1px solid var(--sidebar-fg);
+  z-index: 200;
+  white-space: nowrap;
   overflow: hidden;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ccc;
 }
 
 #ticker-text {
@@ -92,8 +97,8 @@
   position: fixed;
   bottom: 5px;
   left: 5px;
-  background: #f5f5f5;
-  border: 1px solid #ccc;
+  background: var(--bg);
+  border: 1px solid var(--sidebar-fg);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 0.9em;
