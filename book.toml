@@ -3,15 +3,20 @@ authors = ["Lut99"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Ruby's Diary"
+title = "C4m1r's wiki"
 
 
 [output.html]
 theme = "theme"
-default-theme = "dnd"
-preferred-dark-theme = "dnd"
+default-theme = "dark"
+preferred-dark-theme = "dark"
 smart-punctuation = true
 mathjax-support = true
-git-repository-url = "https://github.com/Lut99/rubies-diary"
+git-repository-url = "https://github.com/c4m1r/wiki"
 git-repository-icon = "fa-github"
-site-url = "/"
+site-url = "/wiki/"
+additional-js = ["js/search.js", "js/ticker.js", "js/counter.js"]
+additional-css = ["css/custom.css"]
+
+[output.html.search]
+enable = false

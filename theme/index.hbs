@@ -55,6 +55,8 @@
     </head>
     <body class="sidebar-visible no-js">
     <div id="body-container">
+        <div id="ticker"><span id="ticker-text"></span></div>
+        <div id="visitor-counter"></div>
         <!-- Provide site root to javascript -->
         <script>
             var path_to_root = "{{ path_to_root }}";
@@ -153,11 +155,9 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="dark">Dark</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="dnd">D&amp;D</button></li>
-                            {{!-- <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li> --}}
                         </ul>
                         {{#if search_enabled}}
                         <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
@@ -184,7 +184,13 @@
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
                         {{/if}}
-
+                        <form id="es-search-form" class="es-search-form" action="#">
+                            <div class="es-search-wrapper">
+                                <input type="text" id="es-search-input" placeholder="Search..." autocomplete="off">
+                                <div id="es-search-overlay"></div>
+                                <img id="sound-toggle" src="{{ path_to_root }}favicon.png" alt="Sound mode toggle" title="Sound mode">
+                            </div>
+                        </form>
                     </div>
                 </div>
 
