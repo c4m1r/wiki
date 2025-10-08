@@ -5,9 +5,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 mod logic;
-mod themes;
 use logic::{NervaLogic, NervaConfig, CliArgs, Command};
-use themes::{ThemeRegistry};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct WikiConfig {
@@ -127,11 +125,11 @@ fn handle_build(args: &CliArgs, logic: &NervaLogic) {
         };
 
         let lang = args.language.as_ref().unwrap_or(&config.default_language);
-        let theme = args.theme.as_ref().unwrap_or_else(|| {
+        let theme = args.theme.as_ref().map(|s| s.as_str()).unwrap_or_else(|| {
             if config.themes.is_empty() {
                 "hello-world"
             } else {
-                &config.themes[0]
+                config.themes[0].as_str()
             }
         });
         env::set_var("LANG", lang);
@@ -343,6 +341,11 @@ fn handle_version(args: &CliArgs, logic: &NervaLogic) {
 
 fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaConfig, theme: &str) {
     println!("📂 Copying static assets...");
+
+    // Create .nojekyll file to disable Jekyll processing on GitHub Pages
+    let nojekyll_path = output_dir.join(".nojekyll");
+    fs::write(&nojekyll_path, "").ok();
+    println!("📄 Created .nojekyll file for GitHub Pages compatibility");
 
     let src_dir = generator_root.join("src");
 
