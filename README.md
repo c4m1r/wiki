@@ -582,6 +582,256 @@ jobs:
       - run: nervaweb build --lang ru --quiet
 ```
 
+### 💻 Platform-Specific Installation and Usage
+
+#### 🪟 Windows
+
+**Requirements:**
+- Windows 10/11
+- [Rust](https://rustup.rs/) installed
+- Git (optional, for cloning repository)
+
+**Installation:**
+```bash
+# Clone repository
+git clone https://github.com/yourusername/nervaweb.git
+cd nervaweb
+
+# Build executable
+cargo build --release --manifest-path src\bin\Cargo.toml
+
+# Copy to project root (recommended)
+copy src\bin\target\release\nervaweb.exe .\nervaweb.exe
+```
+
+**Usage:**
+```bash
+# Create project
+nervaweb.exe new my-site --desc "My website"
+
+# Build project
+nervaweb.exe build my-site
+
+# Start local server
+python -m http.server 8000 -d good2go\my-site
+```
+
+**Interactive scripts:**
+```cmd
+# Run build script
+src\bin\build.bat
+```
+
+#### 🐧 Linux
+
+**Requirements:**
+- Ubuntu/Debian/CentOS/RHEL/Fedora or other Linux distribution
+- [Rust](https://rustup.rs/) installed
+- Git (optional, for cloning repository)
+
+**Installation:**
+```bash
+# Clone repository
+git clone https://github.com/yourusername/nervaweb.git
+cd nervaweb
+
+# Build executable
+cargo build --release --manifest-path src/bin/Cargo.toml
+
+# Copy to project root (recommended)
+cp src/bin/target/release/nervaweb ./nervaweb
+
+# Make executable
+chmod +x nervaweb
+```
+
+**Usage:**
+```bash
+# Create project
+./nervaweb new my-site --desc "My website"
+
+# Build project
+./nervaweb build my-site
+
+# Start local server
+python3 -m http.server 8000 -d good2go/my-site
+```
+
+**Interactive scripts:**
+```bash
+# Run build script
+./src/bin/build.sh
+```
+
+#### 🍎 macOS
+
+**Requirements:**
+- macOS 10.15 or later
+- [Xcode Command Line Tools](https://developer.apple.com/xcode/) installed
+- [Rust](https://rustup.rs/) installed
+- Git (optional, for cloning repository)
+
+**Installation:**
+```bash
+# Install Xcode Command Line Tools (if not installed)
+xcode-select --install
+
+# Clone repository
+git clone https://github.com/yourusername/nervaweb.git
+cd nervaweb
+
+# Build executable
+cargo build --release --manifest-path src/bin/Cargo.toml
+
+# Copy to project root (recommended)
+cp src/bin/target/release/nervaweb ./nervaweb
+
+# Make executable
+chmod +x nervaweb
+```
+
+**Usage:**
+```bash
+# Create project
+./nervaweb new my-site --desc "My website"
+
+# Build project
+./nervaweb build my-site
+
+# Start local server
+python3 -m http.server 8000 -d good2go/my-site
+```
+
+**Interactive scripts:**
+```bash
+# Run build script
+./src/bin/build.sh
+```
+
+#### 🐳 Docker (Cross-Platform)
+
+**Requirements:**
+- [Docker](https://docker.com/) installed
+
+**Usage:**
+```bash
+# Clone repository
+git clone https://github.com/yourusername/nervaweb.git
+cd nervaweb
+
+# Build Docker image
+docker build -t nervaweb .
+
+# Create project
+docker run --rm -v $(pwd):/app nervaweb new my-site --desc "My website"
+
+# Build project
+docker run --rm -v $(pwd):/app nervaweb build my-site
+
+# Start local server
+docker run --rm -p 8000:8000 -v $(pwd)/good2go/my-site:/site \
+  nginx:alpine -c /dev/null -p /site -l 8000
+```
+
+#### ☁️ GitHub Codespaces / GitPod / VS Code Remote
+
+**Automatic Setup:**
+If you're using GitHub Codespaces or similar cloud development environment, Rust is usually pre-installed.
+
+```bash
+# Clone and build
+git clone https://github.com/yourusername/nervaweb.git
+cd nervaweb
+cargo build --release --manifest-path src/bin/Cargo.toml
+cp src/bin/target/release/nervaweb ./nervaweb
+chmod +x nervaweb
+
+# Use normally
+./nervaweb new my-site
+./nervaweb build my-site
+```
+
+#### 🔧 Global Installation (All Platforms)
+
+**Using Cargo:**
+```bash
+# Install globally (works on any platform with Rust)
+cargo install --path src/bin
+
+# Now nervaweb is available system-wide
+nervaweb --version
+nervaweb new my-site
+```
+
+**Manual Installation:**
+1. Download pre-built binary from [Releases](https://github.com/yourusername/nervaweb/releases)
+2. Extract to a folder in your PATH
+3. Make executable (Linux/macOS): `chmod +x nervaweb`
+
+### 🎯 Platform-Specific Notes
+
+#### Windows
+- Use `nervaweb.exe` instead of `nervaweb`
+- Use `python` instead of `python3`
+- Use backslashes `\` in paths within batch files
+- Interactive scripts: `build.bat`, `deploy.bat`, `clean.bat`
+
+#### Linux
+- Use `./nervaweb` to run executable
+- Use `python3` for local server
+- Interactive scripts: `build.sh`, `deploy.sh`, `clean.sh`
+- May need additional packages: `build-essential`, `pkg-config`
+
+#### macOS
+- Same as Linux, but Xcode Command Line Tools required
+- Use `python3` from Homebrew if system Python is old
+- May need to install additional tools with Homebrew
+
+#### ARM Devices (Raspberry Pi, etc.)
+```bash
+# Use ARM build script
+./src/bin/build-arm.sh
+
+# Or cross-compile
+rustup target add arm-unknown-linux-gnueabihf
+cargo build --release --target arm-unknown-linux-gnueabihf --manifest-path src/bin/Cargo.toml
+```
+
+### 🔍 Troubleshooting by Platform
+
+#### Windows Issues
+```
+Error: 'nervaweb' is not recognized
+Solution: Use 'nervaweb.exe' or add to PATH
+```
+
+```
+Error: cargo not found
+Solution: Install Rust from https://rustup.rs/
+```
+
+#### Linux Issues
+```
+Error: Permission denied
+Solution: chmod +x nervaweb
+```
+
+```
+Error: libssl not found
+Solution: sudo apt-get install libssl-dev pkg-config
+```
+
+#### macOS Issues
+```
+Error: xcode-select not found
+Solution: xcode-select --install
+```
+
+```
+Error: ld: library not found
+Solution: Install Xcode Command Line Tools
+```
+
 ### 💡 Usage Tips
 
 1. **Always work in project folder** - `nervaweb` searches for structure relative to its location

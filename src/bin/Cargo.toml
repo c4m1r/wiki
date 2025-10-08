@@ -3,8 +3,11 @@ name = "nervaweb"
 version = "1.0.0"
 edition = "2021"
 
+[build]
+target-dir = "../../target"
+
 [[bin]]
-name = "nw"
+name = "nervaweb"
 path = "main.rs"
 
 [dependencies]

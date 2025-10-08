@@ -5,7 +5,9 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 mod logic;
+mod themes;
 use logic::{NervaLogic, NervaConfig, CliArgs, Command};
+use themes::{ThemeRegistry};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct WikiConfig {
@@ -56,7 +58,7 @@ fn handle_new(args: &CliArgs, logic: &NervaLogic) {
         println!("📁 Creating new project '{}'...", project_name);
     }
 
-    match logic.create_project(project_name, args.description.as_deref()) {
+    match logic.create_project(project_name, args.description.as_deref(), args.theme.as_deref()) {
         Ok(()) => {
             if !args.quiet {
                 println!("✅ Project '{}' created successfully!", project_name);
@@ -76,9 +78,17 @@ fn handle_build(args: &CliArgs, logic: &NervaLogic) {
     let projects = match &args.project {
         Some(project_name) => {
             // Build specific project
-            if !logic.get_projects().unwrap_or_default().contains(project_name) {
-                eprintln!("❌ Project '{}' not found", project_name);
-                std::process::exit(1);
+            match logic.get_projects() {
+                Ok(projects) => {
+                    if !projects.contains(project_name) {
+                        eprintln!("❌ Project '{}' not found", project_name);
+                        std::process::exit(1);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("❌ Failed to get projects: {}", e);
+                    std::process::exit(1);
+                }
             }
             vec![project_name.clone()]
         }
@@ -88,7 +98,7 @@ fn handle_build(args: &CliArgs, logic: &NervaLogic) {
                 Ok(projects) => {
                     if projects.is_empty() {
                         if !args.quiet {
-                            println!("ℹ️  No projects found. Create one with: nw new <project-name>");
+                            println!("ℹ️  No projects found. Create one with: nervaweb new <project-name>");
                         }
                         return;
                     }
@@ -117,7 +127,14 @@ fn handle_build(args: &CliArgs, logic: &NervaLogic) {
         };
 
         let lang = args.language.as_ref().unwrap_or(&config.default_language);
-    env::set_var("LANG", lang);
+        let theme = args.theme.as_ref().unwrap_or_else(|| {
+            if config.themes.is_empty() {
+                "hello-world"
+            } else {
+                &config.themes[0]
+            }
+        });
+        env::set_var("LANG", lang);
 
         // Get project paths
         let content_dir = logic.get_project_content_dir(&project_name, &config);
@@ -130,13 +147,13 @@ fn handle_build(args: &CliArgs, logic: &NervaLogic) {
         fs::create_dir_all(&output_dir).expect("Failed to create output directory");
 
         // Copy static assets from generator root
-        copy_static_assets(&output_dir, &logic.generator_root, &config);
+        copy_static_assets(&output_dir, &logic.generator_root, &config, theme);
 
     // Process content files
         process_content_files(&output_dir, &content_dir, &logic.generator_root, lang);
 
     // Generate HTML files
-        generate_html_files(&output_dir, &content_dir, &logic.generator_root, lang, &config);
+        generate_html_files(&output_dir, &content_dir, &logic.generator_root, lang, &config, theme);
 
         if !args.quiet {
             println!("✅ Project '{}' built successfully!", project_name);
@@ -324,17 +341,15 @@ fn handle_version(args: &CliArgs, logic: &NervaLogic) {
     println!("Built with Rust 🦀");
 }
 
-fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaConfig) {
-    if !config.enable_language_switcher {
+fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaConfig, theme: &str) {
     println!("📂 Copying static assets...");
-    }
 
     let src_dir = generator_root.join("src");
 
-    // Copy theme files
-    let theme_dir = src_dir.join(&config.theme_dir);
-    if theme_dir.exists() {
-        copy_dir_recursive(&theme_dir.to_string_lossy(), &output_dir.join("theme"));
+    // Copy theme files (all available themes)
+    let themes_dir = src_dir.join("themes");
+    if themes_dir.exists() {
+        copy_dir_recursive(&themes_dir.to_string_lossy(), &output_dir.join("themes"));
     }
 
     // Copy CSS files
@@ -349,18 +364,21 @@ fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaCo
         copy_dir_recursive(&js_dir.to_string_lossy(), &output_dir.join("js"));
     }
 
-    // Copy fonts if they exist
-    let fonts_src = theme_dir.join("fonts");
-    if fonts_src.exists() {
-        copy_dir_recursive(&fonts_src.to_string_lossy(), &output_dir.join("fonts"));
-    }
+    // Copy fonts and favicon from selected theme
+    let selected_theme_dir = themes_dir.join(theme);
+    if selected_theme_dir.exists() {
+        let fonts_src = selected_theme_dir.join("fonts");
+        if fonts_src.exists() {
+            copy_dir_recursive(&fonts_src.to_string_lossy(), &output_dir.join("fonts"));
+        }
 
-    // Copy favicon files
-    let favicon_files = ["favicon.png", "favicon.svg"];
-    for favicon in &favicon_files {
-        let src_file = theme_dir.join(favicon);
-        if src_file.exists() {
-            fs::copy(&src_file, output_dir.join(favicon)).ok();
+        // Copy favicon files
+        let favicon_files = ["favicon.png", "favicon.svg"];
+        for favicon in &favicon_files {
+            let src_file = selected_theme_dir.join(favicon);
+            if src_file.exists() {
+                fs::copy(&src_file, output_dir.join(favicon)).ok();
+            }
         }
     }
 }
@@ -395,19 +413,20 @@ fn process_content_files(output_dir: &Path, content_dir: &Path, generator_root: 
     copy_dir_recursive(&content_dir.to_string_lossy(), &output_dir.join("content"));
 }
 
-fn generate_html_files(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig) {
+fn generate_html_files(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
     // Generate main index.html
-    generate_main_page(output_dir, content_dir, generator_root, lang, config);
+    generate_main_page(output_dir, content_dir, generator_root, lang, config, theme);
 
     // Process all markdown files in content/
-    process_directory(&content_dir.to_string_lossy(), output_dir, generator_root, lang, config);
+    process_directory(&content_dir.to_string_lossy(), output_dir, generator_root, lang, config, theme);
 }
 
-fn generate_main_page(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig) {
-    let template_path = generator_root.join("src").join(&config.theme_dir).join("index.hbs");
+fn generate_main_page(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
+    let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
     let template_content = fs::read_to_string(&template_path)
         .expect("Failed to read template");
 
+    // Use index.md as main content file
     let content_path = content_dir.join("index.md");
     let content = process_markdown_file(&content_path.to_string_lossy(), lang);
 
@@ -449,7 +468,7 @@ fn generate_language_switcher(current_lang: &str, config: &NervaConfig) -> Strin
     </script>"#, buttons)
 }
 
-fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig) {
+fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
     let src_path = Path::new(src_dir);
 
     for entry in fs::read_dir(src_path).unwrap() {
@@ -464,17 +483,17 @@ fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang:
                 fs::create_dir_all(&new_dst_dir).ok();
             }
 
-            process_directory(&path.to_string_lossy(), &new_dst_dir, generator_root, lang, config);
+            process_directory(&path.to_string_lossy(), &new_dst_dir, generator_root, lang, config, theme);
         } else if path.extension().map_or(false, |ext| ext == "md") {
             let file_stem = path.file_stem().unwrap().to_string_lossy();
             let html_file = dst_dir.join(format!("{}.html", file_stem));
 
-            if file_stem == "index" {
+            if file_stem == "index" || file_stem == "hello-world" {
                 // Special handling for index files
                 let content = process_markdown_file(&path.to_string_lossy(), lang);
                 let title = extract_title(&content).unwrap_or_else(|| config.name.clone());
 
-                let template_path = generator_root.join("src").join(&config.theme_dir).join("index.hbs");
+                let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
                 let template_content = fs::read_to_string(&template_path)
                     .expect("Failed to read template");
 
@@ -489,7 +508,7 @@ fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang:
                 let content = process_markdown_file(&path.to_string_lossy(), lang);
                 let title = extract_title(&content).unwrap_or_else(|| file_stem.to_string());
 
-                let template_path = generator_root.join("src").join(&config.theme_dir).join("index.hbs");
+                let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
                 let template_content = fs::read_to_string(&template_path)
                     .expect("Failed to read template");
 
