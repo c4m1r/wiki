@@ -3,6 +3,23 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
+/// Blog configuration for a NervaWeb project
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlogConfig {
+    /// Blog identifier (e.g., "blog1", "blog2")
+    pub id: String,
+    /// Blog title
+    pub title: String,
+    /// Blog description
+    pub description: String,
+    /// Sub-URL path (e.g., "blog1", "my-custom-blog")
+    pub path: String,
+    /// Whether this blog is enabled
+    pub enabled: bool,
+    /// Design preset/theme for this blog
+    pub design_preset: String,
+}
+
 /// Alternative deployment location
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeploymentMirror {
@@ -42,6 +59,12 @@ pub struct NervaConfig {
     pub enable_language_switcher: bool,
     /// Enable theme switcher
     pub enable_theme_switcher: bool,
+    /// Enable visitor counter widget
+    pub enable_visitor_counter: bool,
+    /// Enable ticker widget
+    pub enable_ticker: bool,
+    /// Enable search widget
+    pub enable_search: bool,
     /// Content directory (relative to project root)
     pub content_dir: String,
     /// Theme directory (relative to generator root)
@@ -51,6 +74,13 @@ pub struct NervaConfig {
     /// Alternative deployment locations (mirrors)
     /// Supports unlimited mirrors for redundancy/load balancing
     pub deployment_mirrors: Vec<DeploymentMirror>,
+    /// Local development port (auto-assigned if not specified)
+    pub local_port: Option<u16>,
+    /// Blog configurations
+    /// Supports multiple blogs with different designs and paths
+    pub blogs: Vec<BlogConfig>,
+    /// Whether to show tree menu of all articles
+    pub enable_menu: bool,
 }
 
 impl Default for NervaConfig {
@@ -79,17 +109,34 @@ impl Default for NervaConfig {
             themes: vec![
                 "hello-world".to_string(),
                 "wiki".to_string(),
+                "blog".to_string(),
             ],
             enable_language_switcher: true,
             enable_theme_switcher: false,
+            enable_visitor_counter: true,
+            enable_ticker: true,
+            enable_search: true,
             content_dir: "content".to_string(),
             theme_dir: "themes".to_string(),
             assets_dirs: vec![
                 "css".to_string(),
                 "js".to_string(),
                 "fonts".to_string(),
+                "FontAwesome".to_string(),
             ],
             deployment_mirrors: vec![], // Empty by default - add mirrors as needed
+            local_port: None,
+            blogs: vec![
+                BlogConfig {
+                    id: "blog1".to_string(),
+                    title: "Blog 1".to_string(),
+                    description: "First blog".to_string(),
+                    path: "blog1".to_string(),
+                    enabled: true,
+                    design_preset: "default".to_string(),
+                }
+            ],
+            enable_menu: true,
         }
     }
 }
@@ -97,9 +144,36 @@ impl Default for NervaConfig {
 impl NervaConfig {
     /// Load configuration from file
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
-        let content = fs::read_to_string(path)?;
-        let config: NervaConfig = toml::from_str(&content)?;
-        Ok(config)
+        let content = fs::read_to_string(&path)?;
+        let path_str = path.as_ref().to_string_lossy();
+
+        match toml::from_str::<NervaConfig>(&content) {
+            Ok(config) => Ok(config),
+            Err(e) => {
+                // If parsing failed due to missing fields, try to create a default config
+                // and merge with existing values
+                eprintln!("⚠️  Config file '{}' has outdated format, updating...", path_str);
+
+                // Try to parse as partial config or create new one
+                let mut default_config = NervaConfig::default();
+
+                // Try to extract basic fields from old config
+                if let Ok(old_config) = toml::from_str::<toml::Value>(&content) {
+                    if let Some(name) = old_config.get("name").and_then(|v| v.as_str()) {
+                        default_config.name = name.to_string();
+                    }
+                    if let Some(description) = old_config.get("description").and_then(|v| v.as_str()) {
+                        default_config.description = description.to_string();
+                    }
+                    // Add other fields as needed...
+                }
+
+                // Save updated config
+                default_config.save_to_file(&path)?;
+
+                Ok(default_config)
+            }
+        }
     }
 
     /// Save configuration to file
@@ -285,11 +359,11 @@ impl NervaLogic {
     pub fn load_project_config(&self, name: &str) -> Result<NervaConfig, Box<dyn std::error::Error>> {
         let config_path = self.get_project_config_path(name);
         if config_path.exists() {
-            match NervaConfig::load_from_file(config_path) {
+            match NervaConfig::load_from_file(config_path.clone()) {
                 Ok(config) => Ok(config),
-                Err(_) => {
+                Err(e) => {
                     // If config file exists but can't be loaded, return default
-                    println!("Warning: Could not load config file, using defaults");
+                    println!("Warning: Could not load config file '{}': {}", config_path.display(), e);
                     Ok(NervaConfig::default())
                 }
             }
@@ -367,6 +441,15 @@ This is your first article created with NervaWeb.
         let mut config = NervaConfig::new();
         config.name = name.to_string();
         config.description = description.unwrap_or("Project description").to_string();
+
+        // Ensure all default values are set explicitly
+        config.enable_language_switcher = true;
+        config.enable_theme_switcher = false;
+        config.enable_visitor_counter = true;
+        config.enable_ticker = true;
+        config.enable_search = true;
+
+        // Save the config
         config.save_to_file(self.get_project_config_path(name))?;
 
         // Ensure output directory exists

@@ -2,10 +2,9 @@ image: rust:latest
 
 pages:
   script:
-    - cargo install mdbook --vers 0.4.52
-    - python3 scripts/generate_summary.py
-    - mdbook build
-    - mv book public
+    - cargo install --path src/bin
+    - nervaweb build --lang en --quiet
+    - mv good2go public
   artifacts:
     paths:
       - public

@@ -1,4 +1,4 @@
-name: Deploy mdBook site
+name: Deploy NervaWeb site
 
 on:
   push:
@@ -19,16 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install mdBook
-        run: cargo install mdbook --vers 0.4.52
-      - name: Generate SUMMARY
-        run: python scripts/generate_summary.py
-      - name: Build book
-        run: mdbook build
+      - name: Install NervaWeb
+        run: cargo install --path src/bin
+      - name: Build site
+        run: nervaweb build --lang en --quiet
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: book
+          path: good2go
 
   deploy:
     needs: build

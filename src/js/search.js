@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function performSearch(query) {
   const esHost = 'https://example.com'; // replace with your Elasticsearch endpoint
-  fetch(`${esHost}/wiki/_search?q=${encodeURIComponent(query)}&size=50`)
+  fetch(`${esHost}/content/_search?q=${encodeURIComponent(query)}&size=50`)
     .then((res) => res.json())
     .then((data) => {
       const hits = data.hits && data.hits.hits ? data.hits.hits : [];

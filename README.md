@@ -2,7 +2,7 @@
 
 A multilingual static site generator written entirely in Rust. Create beautiful multilingual websites from Markdown files with GitHub/GitLab Pages and mirror support.
 
-## 🎯 What is NervaWeb?
+## ✪ What is NervaWeb?
 
 **NervaWeb** is a modern static site generator specifically designed for creating multilingual projects.
 
@@ -23,7 +23,7 @@ A multilingual static site generator written entirely in Rust. Create beautiful 
 - GitHub/GitLab Pages users for site deployment
 - Anyone who wants a simple and powerful tool for generating sites with mirror support
 
-## 🚀 Quick Start
+## ▲ Quick Start
 
 ### Installing NervaWeb
 
@@ -35,7 +35,36 @@ cargo install --path src/bin
 nervaweb --version
 ```
 
-### Creating and Building Projects
+## ▲ Interactive Mode (Recommended for Beginners)
+
+Run `nervaweb` without any arguments to launch the interactive mode:
+
+```bash
+# Launch interactive mode
+nervaweb
+```
+
+**Features:**
+- ♁ Beautiful ASCII animation with spider web and globe
+- ∞ Automatic local server startup (ports 8000, 8001, etc.)
+- ✪ 12-language menu system (English, Russian, Spanish, etc.)
+- ✍ Complete project management
+- ✿ Theme switching
+- ✗ Cache management
+- ⌨ Fallback to console mode
+
+**Menu Options:**
+1. ♁ Select Language (12 languages)
+2. ∞ Publish Locally (all projects or selected)
+3. + Create Project (with name, languages, theme)
+4. ✗ Clear Good2Go Cache
+5. ✗ Delete Project
+6. ✗ Clear Cargo Cache
+7. ⟲ Change Project Language
+8. ✿ Change Project Theme
+9. ⌨ Console Mode (professional mode)
+
+### ⌨ Command Line Mode (Advanced Users)
 
 ```bash
 # Create a new project
@@ -112,34 +141,34 @@ enabled = false
 ### NervaWeb Architecture
 
 ```
-📁 nervaweb-workspace/          # NervaWeb workspace directory
-├── 📁 projects/               # All your projects
-│   └── 📁 my-website/         # Specific project
-│       ├── 📁 content/        # Markdown articles
+⌂ nervaweb-workspace/          # NervaWeb workspace directory
+├── ⌂ projects/               # All your projects
+│   └── ⌂ my-website/         # Specific project
+│       ├── ⌂ content/        # Markdown articles
 │       │   ├── index.md       # Main page (created automatically)
 │       │   └── about.md       # Other pages
 │       └── config.toml        # Project configuration
-├── 📁 good2go/                # Built sites (ready for deployment)
-│   └── 📁 my-website/         # Ready HTML site
+├── ⌂ good2go/                # Built sites (ready for deployment)
+│   └── ⌂ my-website/         # Ready HTML site
 │       ├── index.html
 │       ├── content/
 │       ├── css/
 │       ├── js/
 │       ├── themes/            # All available themes
 │       └── fonts/
-├── 📁 src/                    # Generator source code
-│   ├── 📁 themes/             # Themes with templates and content
-│   │   ├── 📁 hello-world/    # Simple theme (default)
+├── ⌂ src/                    # Generator source code
+│   ├── ⌂ themes/             # Themes with templates and content
+│   │   ├── ⌂ hello-world/    # Simple theme (default)
 │   │   │   ├── index.hbs      # HTML template
 │   │   │   ├── default.md     # Content template for new projects
 │   │   │   └── fonts/, css/   # Styles and fonts
-│   │   └── 📁 wiki/          # Full-featured theme
-│   ├── 📁 css/               # Global styles
-│   ├── 📁 js/                # JavaScript files
+│   │   └── ⌂ wiki/          # Full-featured theme
+│   ├── ⌂ css/               # Global styles
+│   ├── ⌂ js/                # JavaScript files
 │   │   ├── nervaweb.js       # Unified JS library
 │   │   ├── README.md          # JS documentation
 │   │   └── [source files]     # Individual modules
-│   └── 📁 bin/               # Rust code
+│   └── ⌂ bin/               # Rust code
 │       ├── main.rs           # Main logic
 │       ├── logic.rs          # General project logic
 │       ├── themes.rs         # Theme management module
@@ -153,14 +182,14 @@ enabled = false
 
 ### Features
 
-- 🌍 **Multilingual Support** - 12+ languages in one file
-- 🎨 **Custom Themes** - Complete freedom in design
-- 🔄 **Dynamic Language Switching** - Without page reload
-- 📱 **Responsive Design** - Works on all devices
+- ♁ **Multilingual Support** - 12+ languages in one file
+- ✿ **Custom Themes** - Complete freedom in design
+- ⟲ **Dynamic Language Switching** - Without page reload
+- ☎ **Responsive Design** - Works on all devices
 - ⚡ **Pure Rust** - High performance and reliability
-- 🏗️ **Extensible Architecture** - Easy to add new features
+- ⌂ **Extensible Architecture** - Easy to add new features
 
-## 📚 Content
+## ℬ Content
 
 - [Main Page](./src/content/index.md) - overview of all categories
 - [Download Tools](./src/content/toolkit.md) - useful programs
@@ -267,10 +296,10 @@ Contenido español aquí...
 
 ### Approach Advantages
 
-- ✅ **Unified Content Management** - One file for all languages
-- ✅ **No Duplication** - Changes automatically apply to all languages
-- ✅ **Easy Language Addition** - Just add a new LANG block
-- ✅ **Clear Structure** - Languages explicitly separated in code
+- ✔ **Unified Content Management** - One file for all languages
+- ✔ **No Duplication** - Changes automatically apply to all languages
+- ✔ **Easy Language Addition** - Just add a new LANG block
+- ✔ **Clear Structure** - Languages explicitly separated in code
 
 ### Architecture
 
@@ -384,16 +413,16 @@ This allows creating and distributing themes independently from the main NervaWe
 
 **The `nervaweb` command works ONLY inside the NervaWeb project folder where the proper file structure exists.**
 
-#### ✅ Correct Usage:
+#### ✔ Correct Usage:
 
 ```bash
 # Navigate to NervaWeb project folder
 cd /path/to/nervaweb-project
 
 # Now all commands work
-nervaweb build     # ✅ Build site
-nervaweb clear     # ✅ Clear
-nervaweb content   # ✅ Statistics
+nervaweb build     # ✔ Build site
+nervaweb clear     # ✔ Clear
+nervaweb content   # ✔ Statistics
 
 # From any other folder
 cd /any/other/folder
@@ -421,7 +450,7 @@ NervaWeb automatically determines the project root based on the executable locat
    │               └── nervaweb.exe  ← Automatically goes up
    ```
 
-#### 📁 Required project structure:
+#### ⌂ Required project structure:
 
 ```
 nervaweb-project/
@@ -439,7 +468,7 @@ nervaweb-project/
 └── nervaweb.exe    # Executable (created by installation)
 ```
 
-### 🚀 How to install NervaWeb globally?
+### ▲ How to install NervaWeb globally?
 
 ```bash
 # Navigate to project folder
@@ -452,7 +481,7 @@ cargo install --path src/bin
 nervaweb --version
 ```
 
-### 🌍 How to add a new language?
+### ♁ How to add a new language?
 
 1. **Add language to `logic.rs`:**
 ```rust
@@ -482,7 +511,7 @@ Content in new language
 <!-- END_LANG -->
 ```
 
-### 🎨 How to create a new theme?
+### ✿ How to create a new theme?
 
 1. **Create theme folder:**
 ```
@@ -541,26 +570,26 @@ nervaweb content -q     # File count only
 Example output:
 ```
 📊 Content Statistics:
-📁 Content directory: src/content
+⌂ Content directory: src/content
 📄 Total .md files: 42
-📁 Total files: 156
+⌂ Total files: 156
 ```
 
 ### 🐛 What to do with errors?
 
 **Problem:** `Failed to read template`
 ```
-✅ Solution: Check that src/themes/index.hbs exists
+✔ Solution: Check that src/themes/index.hbs exists
 ```
 
 **Problem:** `Language not supported`
 ```
-✅ Solution: Add language to logic.rs or use supported one
+✔ Solution: Add language to logic.rs or use supported one
 ```
 
 **Problem:** `Command not found`
 ```
-✅ Solution: Install NervaWeb: cargo install --path src/bin
+✔ Solution: Install NervaWeb: cargo install --path src/bin
 ```
 
 ### 🔄 Can it be used with CI/CD?
@@ -582,9 +611,9 @@ jobs:
       - run: nervaweb build --lang ru --quiet
 ```
 
-### 💻 Platform-Specific Installation and Usage
+### ⌨ Platform-Specific Installation and Usage
 
-#### 🪟 Windows
+#### ♁ Windows
 
 **Requirements:**
 - Windows 10/11
@@ -622,7 +651,7 @@ python -m http.server 8000 -d good2go\my-site
 src\bin\build.bat
 ```
 
-#### 🐧 Linux
+#### ⚙ Linux
 
 **Requirements:**
 - Ubuntu/Debian/CentOS/RHEL/Fedora or other Linux distribution
@@ -663,7 +692,7 @@ python3 -m http.server 8000 -d good2go/my-site
 ./src/bin/build.sh
 ```
 
-#### 🍎 macOS
+#### ▲ macOS
 
 **Requirements:**
 - macOS 10.15 or later
@@ -708,7 +737,7 @@ python3 -m http.server 8000 -d good2go/my-site
 ./src/bin/build.sh
 ```
 
-#### 🐳 Docker (Cross-Platform)
+#### □ Docker (Cross-Platform)
 
 **Requirements:**
 - [Docker](https://docker.com/) installed
@@ -733,7 +762,7 @@ docker run --rm -p 8000:8000 -v $(pwd)/good2go/my-site:/site \
   nginx:alpine -c /dev/null -p /site -l 8000
 ```
 
-#### ☁️ GitHub Codespaces / GitPod / VS Code Remote
+#### ☁ GitHub Codespaces / GitPod / VS Code Remote
 
 **Automatic Setup:**
 If you're using GitHub Codespaces or similar cloud development environment, Rust is usually pre-installed.
@@ -768,7 +797,7 @@ nervaweb new my-site
 2. Extract to a folder in your PATH
 3. Make executable (Linux/macOS): `chmod +x nervaweb`
 
-### 🎯 Platform-Specific Notes
+### ✪ Platform-Specific Notes
 
 #### Windows
 - Use `nervaweb.exe` instead of `nervaweb`

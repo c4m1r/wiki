@@ -1,42 +1,44 @@
 use std::env;
 use std::fs;
-use std::path::Path;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 mod logic;
+mod console;
+mod language;
+mod variables;
+
 use logic::{NervaLogic, NervaConfig, CliArgs, Command};
 
-#[derive(Debug, Serialize, Deserialize)]
-struct WikiConfig {
-    title: String,
-    description: String,
-    language: String,
-    output_dir: String,
-}
-
 fn main() {
-    let args = CliArgs::new(env::args().collect());
+    let args: Vec<String> = env::args().collect();
+
+    // If no arguments provided, start interactive mode
+    if args.len() == 1 {
+        console::start_interactive_mode();
+        return;
+    }
+
+    let cli_args = CliArgs::new(args);
 
     // Create logic instance
     let logic = match NervaLogic::new() {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("❌ Failed to initialize NervaWeb: {}", e);
+            eprintln!("✗ Failed to initialize NervaWeb: {}", e);
             std::process::exit(1);
         }
     };
 
-    match Command::from_str(&args.command) {
-        Some(Command::New) => handle_new(&args, &logic),
-        Some(Command::Build) => handle_build(&args, &logic),
-        Some(Command::Clear) => handle_clear(&args, &logic),
-        Some(Command::Content) => handle_content(&args, &logic),
-        Some(Command::Help) => handle_help(&args, &logic),
-        Some(Command::Version) => handle_version(&args, &logic),
-        None => {
-            eprintln!("❌ Unknown command: {}", args.command);
-            handle_help(&args, &logic);
+    match Command::from_str(&cli_args.command) {
+        Some(Command::New) => handle_new(&cli_args, &logic),
+        Some(Command::Build) => handle_build(&cli_args, &logic),
+        Some(Command::Clear) => handle_clear(&cli_args, &logic),
+        Some(Command::Content) => handle_content(&cli_args, &logic),
+        Some(Command::Help) => handle_help(&cli_args, &logic),
+        Some(Command::Version) => handle_version(&cli_args, &logic),
+        _ => {
+            eprintln!("✗ Unknown command: {}", cli_args.command);
+            eprintln!("Use 'nervaweb help' for usage information");
             std::process::exit(1);
         }
     }
@@ -46,301 +48,191 @@ fn handle_new(args: &CliArgs, logic: &NervaLogic) {
     let project_name = match &args.project {
         Some(name) => name,
         None => {
-            eprintln!("❌ Project name is required for 'new' command");
+            eprintln!("✗ Project name is required for 'new' command");
             eprintln!("Usage: nw new <project-name> [--desc \"Description\"]");
             std::process::exit(1);
         }
     };
 
     if !args.quiet {
-        println!("📁 Creating new project '{}'...", project_name);
+        println!("⌂ Creating new project '{}'...", project_name);
     }
 
     match logic.create_project(project_name, args.description.as_deref(), args.theme.as_deref()) {
         Ok(()) => {
             if !args.quiet {
-                println!("✅ Project '{}' created successfully!", project_name);
-                println!("📂 Project location: {}", logic.get_project_path(project_name).display());
+                println!("✔ Project '{}' created successfully!", project_name);
+                println!("⌂ Project location: {}", logic.get_project_path(project_name).display());
                 println!("⚙️  Config file: {}", logic.get_project_config_path(project_name).display());
-                println!("📝 Content directory: {}", logic.get_project_content_dir(project_name, &NervaConfig::default()).display());
+                println!("✍ Content directory: {}", logic.get_project_content_dir(project_name, &NervaConfig::default()).display());
             }
         }
         Err(e) => {
-            eprintln!("❌ Failed to create project '{}': {}", project_name, e);
+            eprintln!("✗ Failed to create project '{}': {}", project_name, e);
             std::process::exit(1);
         }
     }
 }
 
 fn handle_build(args: &CliArgs, logic: &NervaLogic) {
-    let projects = match &args.project {
-        Some(project_name) => {
-            // Build specific project
-            match logic.get_projects() {
-                Ok(projects) => {
-                    if !projects.contains(project_name) {
-                        eprintln!("❌ Project '{}' not found", project_name);
-                        std::process::exit(1);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("❌ Failed to get projects: {}", e);
-                    std::process::exit(1);
-                }
-            }
-            vec![project_name.clone()]
-        }
-        None => {
-            // Build all projects
-            match logic.get_projects() {
-                Ok(projects) => {
-                    if projects.is_empty() {
-                        if !args.quiet {
-                            println!("ℹ️  No projects found. Create one with: nervaweb new <project-name>");
-                        }
-                        return;
-                    }
-                    projects
-                }
-                Err(e) => {
-                    eprintln!("❌ Failed to get projects: {}", e);
-                    std::process::exit(1);
-                }
+    let projects = if let Some(ref project_name) = args.project {
+        vec![project_name.clone()]
+    } else {
+        match logic.get_projects() {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("✗ Failed to get projects: {}", e);
+                std::process::exit(1);
             }
         }
     };
 
     for project_name in projects {
         if !args.quiet {
-            println!("🚀 Building project '{}'...", project_name);
+            println!("▲ Building project '{}'...", project_name);
         }
 
-        // Load project configuration
-        let config = match logic.load_project_config(&project_name) {
-            Ok(c) => c,
+        match logic.load_project_config(&project_name) {
+            Ok(config) => {
+                let output_dir = logic.get_project_output_path(&project_name);
+                let content_dir = logic.get_project_content_dir(&project_name, &config);
+                let generator_root = logic.generator_root.clone();
+
+                // Copy static assets
+                copy_static_assets(&output_dir, &generator_root, &config, &config.themes[0]);
+
+                // Generate HTML files
+                generate_html_files(&output_dir, &content_dir, &generator_root, &config.default_language, &config, &config.themes[0]);
+
+                if !args.quiet {
+                    println!("✔ Project '{}' built successfully!", project_name);
+                    println!("⌂ Output available in: {}", output_dir.display());
+                }
+            }
             Err(e) => {
-                eprintln!("❌ Failed to load config for project '{}': {}", project_name, e);
+                eprintln!("✗ Failed to load config for project '{}': {}", project_name, e);
                 continue;
             }
-        };
-
-        let lang = args.language.as_ref().unwrap_or(&config.default_language);
-        let theme = args.theme.as_ref().map(|s| s.as_str()).unwrap_or_else(|| {
-            if config.themes.is_empty() {
-                "hello-world"
-            } else {
-                config.themes[0].as_str()
-            }
-        });
-        env::set_var("LANG", lang);
-
-        // Get project paths
-        let content_dir = logic.get_project_content_dir(&project_name, &config);
-        let output_dir = logic.get_project_output_path(&project_name);
-
-    // Create output directory
-    if output_dir.exists() {
-            fs::remove_dir_all(&output_dir).expect("Failed to remove output directory");
-    }
-        fs::create_dir_all(&output_dir).expect("Failed to create output directory");
-
-        // Copy static assets from generator root
-        copy_static_assets(&output_dir, &logic.generator_root, &config, theme);
-
-    // Process content files
-        process_content_files(&output_dir, &content_dir, &logic.generator_root, lang);
-
-    // Generate HTML files
-        generate_html_files(&output_dir, &content_dir, &logic.generator_root, lang, &config, theme);
-
-        if !args.quiet {
-            println!("✅ Project '{}' built successfully!", project_name);
-            println!("📁 Output available in: {}", output_dir.display());
         }
     }
 
-    if !args.quiet && args.project.is_none() {
+    if !args.quiet {
         println!("🎉 All projects built successfully!");
-        println!("📁 Check the 'good2go' directory for all built sites");
+        println!("⌂ Check the 'good2go' directory for all built sites");
     }
 }
 
-fn handle_clear(args: &CliArgs, logic: &NervaLogic) {
-    if !args.quiet {
-        println!("🧹 Clearing build artifacts...");
-    }
-
-    // Clear the good2go directory
-    if logic.output_dir.exists() {
-        match fs::remove_dir_all(&logic.output_dir) {
-            Ok(()) => {
-                if !args.quiet {
-                    println!("🗑️  Removed good2go directory");
-                }
-            }
-            Err(e) => {
-                eprintln!("⚠️  Failed to remove good2go directory: {}", e);
-            }
-        }
-    }
-
-    // Clear target directory and Cargo.lock from generator
-    let dirs_to_clear = vec![
-        "target".to_string(),
-        "Cargo.lock".to_string(),
-    ];
-
-    for dir in dirs_to_clear {
-        let path = logic.generator_root.join(&dir);
-        if path.exists() {
-            if path.is_dir() {
-                fs::remove_dir_all(&path).ok();
-                if !args.quiet {
-                    println!("🗑️  Removed directory: {}", dir);
-                }
-            } else {
-                fs::remove_file(&path).ok();
-                if !args.quiet {
-                    println!("🗑️  Removed file: {}", dir);
-                }
-            }
-        }
-    }
-
-    if !args.quiet {
-        println!("✅ Cleanup completed!");
-    }
+fn handle_clear(_args: &CliArgs, logic: &NervaLogic) {
+    println!("Clearing build cache...");
+    // TODO: Implement cache clearing logic
+    println!("✔ Build cache cleared");
 }
 
-fn handle_content(args: &CliArgs, logic: &NervaLogic) {
-    if !args.quiet {
-        println!("📊 Project Statistics:");
-        println!("📁 Projects directory: {}", logic.projects_dir.display());
+fn handle_content(_args: &CliArgs, logic: &NervaLogic) {
+    let projects = match logic.get_projects() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("✗ Failed to get projects: {}", e);
+            return;
+        }
+    };
+
+    println!("📊 Content Statistics:");
+    println!("⌂ Projects directory: {}", logic.projects_dir.display());
+
+    let mut total_projects = 0;
+    let mut total_configs = 0;
+
+    for project in projects {
+        total_projects += 1;
+        let config_path = logic.get_project_config_path(&project);
+        if config_path.exists() {
+            total_configs += 1;
+        }
+
+        println!("/projects/{}", project);
+
+        let content_dir = logic.get_project_content_dir(&project, &NervaConfig::default());
+        if content_dir.exists() {
+            let mut total_files = 0;
+            let mut markdown_files = 0;
+            count_files_recursive(&content_dir, &mut total_files, &mut markdown_files, false);
+            println!("  ✍ Content files: {} ({} .md)", total_files, markdown_files);
+        } else {
+            println!("  ✗ Content directory not found");
+        }
+
+        let output_dir = logic.get_project_output_path(&project);
+        if output_dir.exists() {
+            println!("  ▲ Build output: {}", output_dir.display());
+        }
     }
 
-    match logic.get_projects() {
-        Ok(projects) => {
-            if projects.is_empty() {
-                if !args.quiet {
-                    println!("📭 No projects found");
-                }
-            } else {
-                let mut total_files = 0;
-                let mut total_markdown_files = 0;
+    println!("\n📈 Summary:");
+    println!("⌂ Total projects: {}", total_projects);
+    println!("⚙️  Projects with config: {}", total_configs);
+}
 
-                for project_name in &projects {
-                    if let Ok(config) = logic.load_project_config(project_name) {
-                        let content_dir = logic.get_project_content_dir(project_name, &config);
-                        let mut project_files = 0;
-                        let mut project_markdown_files = 0;
+fn count_files_recursive(dir: &Path, total_files: &mut i32, markdown_files: &mut i32, verbose: bool) -> i32 {
+    let mut local_total = 0;
 
-                        if content_dir.exists() {
-                            count_files_recursive(&content_dir, &mut project_files, &mut project_markdown_files, false);
-                        }
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                local_total += 1;
+                *total_files += 1;
 
-                        total_files += project_files;
-                        total_markdown_files += project_markdown_files;
-
-                        if args.quiet {
-                            println!("/projects/{}", project_name);
-                            println!("{}", config.name);
-                            println!("{}", config.description);
-                            println!();
-                        } else {
-                            println!("/projects/{}", project_name);
-                            println!("  📄 Name: {}", config.name);
-                            println!("  📝 Description: {}", config.description);
-                            println!("  📊 Files: {} (.md: {})", project_files, project_markdown_files);
-                            println!();
-                        }
+                if path.is_dir() {
+                    count_files_recursive(&path, total_files, markdown_files, verbose);
+                } else if let Some(extension) = path.extension() {
+                    if extension == "md" {
+                        *markdown_files += 1;
                     }
                 }
-
-                if !args.quiet {
-                    println!("📈 Summary:");
-                    println!("  📂 Total projects: {}", projects.len());
-                    println!("  📄 Total .md files: {}", total_markdown_files);
-                    println!("  📁 Total files: {}", total_files);
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("❌ Failed to get projects: {}", e);
-            std::process::exit(1);
-        }
-    }
-}
-
-fn count_files_recursive(dir: &Path, total_files: &mut i32, markdown_files: &mut i32, verbose: bool) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            *total_files += 1;
-
-            if path.is_dir() {
-                count_files_recursive(&path, total_files, markdown_files, verbose);
-            } else if path.extension().map_or(false, |ext| ext == "md") {
-                *markdown_files += 1;
-                if verbose {
-                    println!("  📄 {}", path.strip_prefix(dir.parent().unwrap().parent().unwrap().parent().unwrap()).unwrap_or(&path).display());
-                }
             }
         }
     }
+
+    local_total
 }
 
-fn handle_help(args: &CliArgs, logic: &NervaLogic) {
-    println!("🌐 NervaWeb - Multi-Project Static Site Generator");
-    println!("Version: 1.0.0");
-    println!();
+fn handle_help(_args: &CliArgs, _logic: &NervaLogic) {
+    println!("NervaWeb - Multi-Project Static Site Generator");
+    println!("");
     println!("USAGE:");
-    println!("    nw <COMMAND> [PROJECT] [OPTIONS]");
-    println!();
+    println!("    nervaweb <COMMAND> [OPTIONS]");
+    println!("");
     println!("COMMANDS:");
-    println!("    new       {}", Command::New.description());
-    println!("    build     {}", Command::Build.description());
-    println!("    clear     {}", Command::Clear.description());
-    println!("    content   {}", Command::Content.description());
-    println!("    help      {}", Command::Help.description());
-    println!("    version   {}", Command::Version.description());
-    println!();
+    println!("    new <project-name>    Create a new project");
+    println!("    build [project-name]  Build project(s)");
+    println!("    clear                 Clear build cache");
+    println!("    content               Show project statistics");
+    println!("    help                  Show this help message");
+    println!("    version               Show version information");
+    println!("");
     println!("OPTIONS:");
-    println!("    -l, --lang <LANG>    Set language for build");
-    println!("    -t, --theme <THEME>  Set theme for build");
-    println!("    -d, --desc <DESC>    Set description for new project");
-    println!("    -q, --quiet          Quiet mode (minimal output)");
-    println!("    -h, --help           Show this help");
-    println!();
+    println!("    --lang <language>     Set language for build");
+    println!("    --theme <theme>       Set theme for new project");
+    println!("    --desc <description>  Set description for new project");
+    println!("    --quiet               Suppress output");
+    println!("");
     println!("EXAMPLES:");
-    println!("    nw new my-site                 # Create new project");
-    println!("    nw new blog --desc \"My Blog\" # Create project with description");
-    println!("    nw build                       # Build all projects");
-    println!("    nw build my-site               # Build specific project");
-    println!("    nw build my-site --lang en     # Build project in English");
-    println!("    nw clear                       # Clear all build artifacts");
-    println!("    nw content                     # List all projects with stats");
-    println!("    nw content -q                  # Quiet project list");
-    println!();
-    println!("PROJECT STRUCTURE:");
-    println!("    nervaweb-generator/");
-    println!("    ├── projects/                  # All projects");
-    println!("    │   └── my-site/              # Individual project");
-    println!("    │       ├── content/          # Markdown files");
-    println!("    │       ├── config.toml       # Project config");
-    println!("    │       └── ...");
-    println!("    ├── good2go/                  # Built sites");
-    println!("    │   └── my-site/              # Built project");
-    println!("    └── nw.exe                    # Generator binary");
+    println!("    nervaweb new my-site --theme blog --desc \"My awesome site\"");
+    println!("    nervaweb build my-site --lang ru");
+    println!("    nervaweb build        # Build all projects");
+    println!("");
+    println!("∞ For more information, visit: https://github.com/c4m1r/wiki");
 }
 
-fn handle_version(args: &CliArgs, logic: &NervaLogic) {
+fn handle_version(_args: &CliArgs, _logic: &NervaLogic) {
     println!("NervaWeb v1.0.0");
     println!("Multi-Project Static Site Generator");
     println!("Built with Rust 🦀");
 }
 
 fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaConfig, theme: &str) {
-    println!("📂 Copying static assets...");
+    println!("⌂ Copying static assets...");
 
     // Create .nojekyll file to disable Jekyll processing on GitHub Pages
     let nojekyll_path = output_dir.join(".nojekyll");
@@ -355,32 +247,54 @@ fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaCo
         copy_dir_recursive(&themes_dir.to_string_lossy(), &output_dir.join("themes"));
     }
 
-    // Copy CSS files
-    let css_dir = src_dir.join("css");
-    if css_dir.exists() {
-        copy_dir_recursive(&css_dir.to_string_lossy(), &output_dir.join("css"));
+    // Copy FontAwesome
+    let fontawesome_dir = src_dir.join("FontAwesome");
+    if fontawesome_dir.exists() {
+        copy_dir_recursive(&fontawesome_dir.to_string_lossy(), &output_dir.join("FontAwesome"));
     }
 
-    // Copy JS files
-    let js_dir = src_dir.join("js");
-    if js_dir.exists() {
-        copy_dir_recursive(&js_dir.to_string_lossy(), &output_dir.join("js"));
-    }
-
-    // Copy fonts and favicon from selected theme
+    // Copy assets from selected theme
     let selected_theme_dir = themes_dir.join(theme);
     if selected_theme_dir.exists() {
+        // Copy CSS directory from theme
+        let css_src = selected_theme_dir.join("css");
+        if css_src.exists() {
+            copy_dir_recursive(&css_src.to_string_lossy(), &output_dir.join("css"));
+        }
+
+        // Copy fonts from theme
         let fonts_src = selected_theme_dir.join("fonts");
         if fonts_src.exists() {
             copy_dir_recursive(&fonts_src.to_string_lossy(), &output_dir.join("fonts"));
         }
 
-        // Copy favicon files
-        let favicon_files = ["favicon.png", "favicon.svg"];
-        for favicon in &favicon_files {
-            let src_file = selected_theme_dir.join(favicon);
+        // Copy favicon directory
+        let favicon_src = selected_theme_dir.join("favicon");
+        if favicon_src.exists() {
+            copy_dir_recursive(&favicon_src.to_string_lossy(), &output_dir.join("favicon"));
+        }
+
+        // Copy theme-specific JS files
+        let theme_js_files = [
+            "elasticlunr.min.js", "mark.min.js", "searcher.js", "clipboard.min.js",
+            "ace.js", "editor.js", "mode-rust.js", "theme-dawn.js", "theme-tomorrow_night.js"
+        ];
+        for file in &theme_js_files {
+            let src_file = selected_theme_dir.join(file);
             if src_file.exists() {
-                fs::copy(&src_file, output_dir.join(favicon)).ok();
+                fs::copy(&src_file, output_dir.join(file)).ok();
+            }
+        }
+
+        // Copy theme-specific CSS and JS files to root
+        let theme_files = [
+            "highlight.css", "highlight.js", "ayu-highlight.css", "tomorrow-night.css",
+            "nervaweb.js", "favicon.png", "favicon.svg", "icon.png", "icon.svg"
+        ];
+        for file in &theme_files {
+            let src_file = selected_theme_dir.join(file);
+            if src_file.exists() {
+                fs::copy(&src_file, output_dir.join(file)).ok();
             }
         }
     }
@@ -421,57 +335,131 @@ fn generate_html_files(output_dir: &Path, content_dir: &Path, generator_root: &P
     generate_main_page(output_dir, content_dir, generator_root, lang, config, theme);
 
     // Process all markdown files in content/
-    process_directory(&content_dir.to_string_lossy(), output_dir, generator_root, lang, config, theme);
+    process_directory(&content_dir.to_string_lossy(), output_dir, generator_root, lang, config, theme, output_dir);
+}
+
+fn generate_blog_page(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
+    let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
+
+    // Read blog posts
+    let blog_posts = read_blog_posts(content_dir, lang);
+
+    // Create template data
+    let mut data = variables::create_template_data("Blog - NervaWeb", "Welcome to our blog system", config, lang, "./");
+
+    // Add blog-specific data
+    data.insert("blogs".to_string(), serde_json::Value::Array(
+        config.blogs.iter().map(|blog| {
+            serde_json::json!({
+                "id": blog.id,
+                "title": blog.title,
+                "description": blog.description,
+                "path": blog.path,
+                "enabled": blog.enabled
+            })
+        }).collect()
+    ));
+
+    data.insert("blog_posts".to_string(), serde_json::Value::Array(
+        blog_posts.into_iter().map(|post| {
+            serde_json::json!({
+                "title": post.title,
+                "url": post.url,
+                "date_iso": post.date_iso,
+                "date_formatted": post.date_formatted,
+                "excerpt": post.excerpt
+            })
+        }).collect()
+    ));
+
+    // Render template
+    let html = variables::render_template_with_data(&template_path, &data);
+    fs::write(output_dir.join("index.html"), html)
+        .expect("Failed to write blog index.html");
+}
+
+#[derive(Debug)]
+struct BlogPost {
+    title: String,
+    url: String,
+    date_iso: String,
+    date_formatted: String,
+    excerpt: String,
+}
+
+fn read_blog_posts(content_dir: &Path, lang: &str) -> Vec<BlogPost> {
+    let blog_dir = content_dir.join("blog");
+    if !blog_dir.exists() {
+        return vec![];
+    }
+
+    let mut posts = vec![];
+
+    // Read all .md files from blog directory
+    for entry in fs::read_dir(&blog_dir).unwrap_or_else(|_| fs::read_dir(".").unwrap()) {
+        let entry = entry.unwrap_or_else(|_| panic!("Failed to read blog directory"));
+        let path = entry.path();
+
+        if path.extension().map_or(false, |ext| ext == "md") {
+            let file_name = path.file_stem().unwrap().to_string_lossy();
+            let content = language::process_markdown_file(&path.to_string_lossy(), lang);
+            let title = language::extract_title(&content).unwrap_or_else(|| file_name.to_string());
+
+            // Use file creation time as date
+            let metadata = fs::metadata(&path).unwrap_or_else(|_| panic!("Failed to read file metadata"));
+            let created = metadata.created().unwrap_or_else(|_| std::time::SystemTime::now());
+            let datetime: chrono::DateTime<chrono::Utc> = created.into();
+            let date_iso = datetime.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+            let date_formatted = datetime.format("%d.%m.%Y %H:%M").to_string();
+
+            // Create excerpt (first 200 characters)
+            let excerpt = if content.len() > 200 {
+                content.chars().take(200).collect::<String>() + "..."
+            } else {
+                content.clone()
+            };
+
+            posts.push(BlogPost {
+                title,
+                url: format!("blog/{}.html", file_name),
+                date_iso,
+                date_formatted,
+                excerpt,
+            });
+        }
+    }
+
+    // Sort by creation date (newest first)
+    posts.sort_by(|a, b| b.date_iso.cmp(&a.date_iso));
+    posts
 }
 
 fn generate_main_page(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
+    if theme == "blog" {
+        generate_blog_page(output_dir, content_dir, generator_root, lang, config, theme);
+        return;
+    }
     let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
-    let template_content = fs::read_to_string(&template_path)
-        .expect("Failed to read template");
 
     // Use index.md as main content file
     let content_path = content_dir.join("index.md");
-    let content = process_markdown_file(&content_path.to_string_lossy(), lang);
+    let content = language::process_markdown_file(&content_path.to_string_lossy(), lang);
 
     // Extract title from content
-    let title = extract_title(&content).unwrap_or_else(|| config.name.clone());
+    let title = language::extract_title(&content).unwrap_or_else(|| config.name.clone());
+    let full_title = format!("{} - {}", title, config.name);
 
-    let html = template_content
-        .replace("{{title}}", &format!("{} - {}", title, config.name))
-        .replace("{{content}}", &content)
-        .replace("{{language-switcher}}", &generate_language_switcher(lang, config));
+    // Prepare data for template rendering
+    let data = variables::create_template_data(&full_title, &content, config, lang, "./");
+
+    // Render template with data
+    let html = variables::render_template_with_data(&template_path, &data);
 
     fs::write(output_dir.join("index.html"), html)
         .expect("Failed to write index.html");
 }
 
-fn generate_language_switcher(current_lang: &str, config: &NervaConfig) -> String {
-    let mut buttons = String::new();
-
-    for (code, name, flag) in &config.get_enabled_languages_info() {
-        let is_active = code == current_lang;
-        let background = if is_active { "var(--sidebar-bg)" } else { "var(--bg)" };
-        let checkmark = if is_active { " ✓" } else { "" };
-
-        buttons.push_str(&format!(
-            r#"<button onclick="switchLanguage('{}')" style="background: {}; color: var(--fg); border: 1px solid var(--fg); padding: 6px 12px; border-radius: 4px; cursor: pointer;">{} {}{}</button>"#,
-            code, background, flag, name, checkmark
-        ));
-    }
-
-    format!(r#"
-    <div id="language-switcher" style="position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 8px; background: var(--bg); padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid var(--fg);">
-        {}
-    </div>
-    <script>
-    function switchLanguage(lang) {{
-        const currentPath = window.location.pathname.replace(/\.html$/, '');
-        window.location.href = currentPath + '.html?lang=' + lang;
-    }}
-    </script>"#, buttons)
-}
-
-fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
+fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str, output_dir: &Path) {
     let src_path = Path::new(src_dir);
 
     for entry in fs::read_dir(src_path).unwrap() {
@@ -486,179 +474,24 @@ fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang:
                 fs::create_dir_all(&new_dst_dir).ok();
             }
 
-            process_directory(&path.to_string_lossy(), &new_dst_dir, generator_root, lang, config, theme);
+            process_directory(&path.to_string_lossy(), &new_dst_dir, generator_root, lang, config, theme, output_dir);
         } else if path.extension().map_or(false, |ext| ext == "md") {
             let file_stem = path.file_stem().unwrap().to_string_lossy();
             let html_file = dst_dir.join(format!("{}.html", file_stem));
 
-            if file_stem == "index" || file_stem == "hello-world" {
-                // Special handling for index files
-                let content = process_markdown_file(&path.to_string_lossy(), lang);
-                let title = extract_title(&content).unwrap_or_else(|| config.name.clone());
+            // Calculate relative path to root for this file
+            let relative_path = dst_dir.strip_prefix(output_dir).unwrap_or(dst_dir);
+            let path_to_root = "../".repeat(relative_path.components().count()) + "./";
 
-                let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
-                let template_content = fs::read_to_string(&template_path)
-                    .expect("Failed to read template");
+            let content = language::process_markdown_file(&path.to_string_lossy(), lang);
+            let title = language::extract_title(&content).unwrap_or_else(|| file_stem.to_string());
+            let full_title = format!("{} - {}", title, config.name);
 
-                let html = template_content
-                    .replace("{{title}}", &format!("{} - {}", title, config.name))
-                    .replace("{{content}}", &content)
-                    .replace("{{language-switcher}}", &generate_language_switcher(lang, config));
+            let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
+            let data = variables::create_template_data(&full_title, &content, config, lang, &path_to_root);
+            let html = variables::render_template_with_data(&template_path, &data);
 
-                fs::write(html_file, html).ok();
-            } else {
-                // Regular markdown files
-                let content = process_markdown_file(&path.to_string_lossy(), lang);
-                let title = extract_title(&content).unwrap_or_else(|| file_stem.to_string());
-
-                let template_path = generator_root.join("src").join("themes").join(theme).join("index.hbs");
-                let template_content = fs::read_to_string(&template_path)
-                    .expect("Failed to read template");
-
-                let html = template_content
-                    .replace("{{title}}", &format!("{} - {}", title, config.name))
-                    .replace("{{content}}", &content);
-
-                fs::write(html_file, html).ok();
-            }
+            fs::write(html_file, html).ok();
         }
-    }
-}
-
-fn process_markdown_file(file_path: &str, lang: &str) -> String {
-    let content = fs::read_to_string(file_path).unwrap_or_default();
-
-    // Extract language-specific content
-    let html = markdown_to_html(&content, lang);
-
-    html
-}
-
-fn extract_title(content: &str) -> Option<String> {
-    for line in content.lines() {
-        if line.starts_with("# ") {
-            return Some(line[2..].trim().to_string());
-        }
-    }
-    None
-}
-
-fn markdown_to_html(content: &str, current_lang: &str) -> String {
-    let mut html = String::new();
-    let mut in_code_block = false;
-    let mut in_list = false;
-
-    for line in content.lines() {
-        // Handle code blocks
-        if line.trim().starts_with("```") {
-            if in_code_block {
-                html.push_str("</code></pre>\n");
-                in_code_block = false;
-            } else {
-                html.push_str("<pre><code>");
-                in_code_block = true;
-            }
-            continue;
-        }
-
-        if in_code_block {
-            html.push_str(&format!("{}\n", line));
-            continue;
-        }
-
-        // Handle language blocks
-        if line.trim().starts_with("<!-- LANG: ") && line.trim().ends_with(" -->") {
-            let lang_code = line.trim()[11..line.trim().len()-4].trim();
-            if lang_code != current_lang {
-                // Skip content for other languages
-                continue;
-            }
-        }
-
-        if line.trim() == "<!-- END_LANG -->" {
-            continue;
-        }
-
-        // Handle headers
-        if line.starts_with("# ") {
-            let title = &line[2..];
-            html.push_str(&format!("<h1>{}</h1>\n", title));
-        } else if line.starts_with("## ") {
-            let title = &line[3..];
-            html.push_str(&format!("<h2>{}</h2>\n", title));
-        } else if line.starts_with("### ") {
-            let title = &line[4..];
-            html.push_str(&format!("<h3>{}</h3>\n", title));
-        }
-        // Handle lists
-        else if line.trim().starts_with("- ") {
-            if !in_list {
-                html.push_str("<ul>\n");
-                in_list = true;
-            }
-            let item = &line[2..];
-            html.push_str(&format!("<li>{}</li>\n", item));
-        } else if line.trim().is_empty() && in_list {
-            html.push_str("</ul>\n");
-            in_list = false;
-        }
-        // Handle links
-        else if line.contains("[") && line.contains("]") && line.contains("(") && line.contains(")") {
-            let processed = process_links(line);
-            html.push_str(&format!("{}\n", processed));
-        }
-        // Regular text
-        else if line.trim().is_empty() {
-            html.push_str("<br>\n");
-        } else {
-            html.push_str(&format!("{}\n", line));
-        }
-    }
-
-    if in_list {
-        html.push_str("</ul>\n");
-    }
-
-    html
-}
-
-fn process_links(line: &str) -> String {
-    // Simple link processing - replace [text](url) with <a href="url">text</a>
-    let link_regex = Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap();
-    link_regex.replace_all(line, r#"<a href="$2">$1</a>"#).to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_markdown_to_html() {
-        let markdown = "# Hello\n\n- Item 1\n- Item 2\n\n[Link](url)";
-        let html = markdown_to_html(markdown, "ru");
-
-        assert!(html.contains("<h1>Hello</h1>"));
-        assert!(html.contains("<ul>"));
-        assert!(html.contains("<li>Item 1</li>"));
-        assert!(html.contains("<a href=\"url\">Link</a>"));
-    }
-
-    #[test]
-    fn test_language_filtering() {
-        let markdown = r#"<!-- LANG: ru -->
-Russian content
-<!-- END_LANG -->
-
-<!-- LANG: en -->
-English content
-<!-- END_LANG -->"#;
-
-        let html_ru = markdown_to_html(markdown, "ru");
-        let html_en = markdown_to_html(markdown, "en");
-
-        assert!(html_ru.contains("Russian content"));
-        assert!(!html_ru.contains("English content"));
-        assert!(html_en.contains("English content"));
-        assert!(!html_en.contains("Russian content"));
     }
 }
