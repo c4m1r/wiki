@@ -1,6 +1,8 @@
+<img src="https://raw.githubusercontent.com/7pixelrains/.png" alt="Hexo logo" width="100" height="100" align="right" />
+
 # NervaWeb
 
-A multilingual static site generator written entirely in Rust. Create beautiful multilingual websites from Markdown files with GitHub/GitLab Pages and mirror support.
+> A multilingual static site generator written entirely in Rust GitHub/GitLab Pages and mirror support.
 
 ## ✪ What is NervaWeb?
 
