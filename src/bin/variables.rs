@@ -48,6 +48,8 @@ pub fn create_template_data(title: &str, content: &str, config: &NervaConfig, la
     data.insert("additional_js".to_string(), serde_json::Value::Array(vec![]));
     data.insert("language-switcher".to_string(), serde_json::Value::String(crate::language::generate_language_switcher(lang, config)));
     data.insert(" nervaweb-config ".to_string(), serde_json::Value::String(widget_config_json));
+    data.insert("enable_pwa".to_string(), serde_json::Value::Bool(config.enable_pwa));
+    data.insert("enable_i18n".to_string(), serde_json::Value::Bool(config.enable_i18n));
 
     // Generate table of contents (empty for now)
     data.insert("toc".to_string(), serde_json::Value::String("".to_string()));

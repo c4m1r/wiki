@@ -65,6 +65,10 @@ pub struct NervaConfig {
     pub enable_ticker: bool,
     /// Enable search widget
     pub enable_search: bool,
+    /// Enable PWA features (service worker, manifest)
+    pub enable_pwa: bool,
+    /// Enable internationalization features
+    pub enable_i18n: bool,
     /// Content directory (relative to project root)
     pub content_dir: String,
     /// Theme directory (relative to generator root)
@@ -116,6 +120,8 @@ impl Default for NervaConfig {
             enable_visitor_counter: true,
             enable_ticker: true,
             enable_search: true,
+            enable_pwa: true,
+            enable_i18n: true,
             content_dir: "content".to_string(),
             theme_dir: "themes".to_string(),
             assets_dirs: vec![
@@ -282,6 +288,10 @@ pub struct NervaLogic {
 }
 
 impl NervaLogic {
+    /// Get generator root directory
+    pub fn get_generator_root(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        Ok(self.generator_root.clone())
+    }
     /// Create new logic instance
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let exe_path = std::env::current_exe()?;
@@ -484,6 +494,7 @@ pub struct CliArgs {
     pub quiet: bool,
     pub theme: Option<String>,
     pub description: Option<String>,
+    pub args: Vec<String>,
 }
 
 impl CliArgs {
@@ -494,16 +505,24 @@ impl CliArgs {
         let mut quiet = false;
         let mut theme = None;
         let mut description = None;
+        let mut extra_args = Vec::new();
 
         let mut i = 1; // Skip program name
         while i < args.len() {
             match args[i].as_str() {
-                "new" | "build" | "clear" | "content" | "help" | "version" => {
+                "new" | "build" | "clear" | "content" | "plugin" | "help" | "version" => {
                     command = args[i].clone();
                     // For "new" command, next argument is project name
                     if args[i] == "new" && i + 1 < args.len() {
                         project = Some(args[i + 1].clone());
                         i += 1;
+                    }
+                    // Collect remaining arguments for commands that support them
+                    if args[i] == "plugin" {
+                        while i + 1 < args.len() {
+                            i += 1;
+                            extra_args.push(args[i].clone());
+                        }
                     }
                 }
                 "--lang" | "-l" => {
@@ -549,6 +568,7 @@ impl CliArgs {
             quiet,
             theme,
             description,
+            args: extra_args,
         }
     }
 }
@@ -559,6 +579,7 @@ pub enum Command {
     Build,
     Clear,
     Content,
+    Plugin,
     Help,
     Version,
 }
@@ -570,6 +591,7 @@ impl Command {
             "build" => Some(Command::Build),
             "clear" => Some(Command::Clear),
             "content" => Some(Command::Content),
+            "plugin" => Some(Command::Plugin),
             "help" => Some(Command::Help),
             "version" => Some(Command::Version),
             _ => None,
@@ -582,6 +604,7 @@ impl Command {
             Command::Build => "Build the static website",
             Command::Clear => "Clear build artifacts and cache",
             Command::Content => "Count and list content files",
+            Command::Plugin => "Create and manage NervaWeb plugins",
             Command::Help => "Show help information",
             Command::Version => "Show version information",
         }

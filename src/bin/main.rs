@@ -6,6 +6,9 @@ mod logic;
 mod console;
 mod language;
 mod variables;
+mod pwa;
+mod i18n;
+mod plugins;
 
 use logic::{NervaLogic, NervaConfig, CliArgs, Command};
 
@@ -32,9 +35,10 @@ fn main() {
     match Command::from_str(&cli_args.command) {
         Some(Command::New) => handle_new(&cli_args, &logic),
         Some(Command::Build) => handle_build(&cli_args, &logic),
-        Some(Command::Clear) => handle_clear(&cli_args, &logic),
-        Some(Command::Content) => handle_content(&cli_args, &logic),
-        Some(Command::Help) => handle_help(&cli_args, &logic),
+               Some(Command::Clear) => handle_clear(&cli_args, &logic),
+               Some(Command::Content) => handle_content(&cli_args, &logic),
+               Some(Command::Plugin) => handle_plugin(&cli_args, &logic),
+               Some(Command::Help) => handle_help(&cli_args, &logic),
         Some(Command::Version) => handle_version(&cli_args, &logic),
         _ => {
             eprintln!("✗ Unknown command: {}", cli_args.command);
@@ -276,7 +280,7 @@ fn copy_static_assets(output_dir: &Path, generator_root: &Path, config: &NervaCo
 
         // Copy theme-specific JS files
         let theme_js_files = [
-            "elasticlunr.min.js", "mark.min.js", "searcher.js", "clipboard.min.js",
+            "elasticlunr.min.js", "mark.min.js", "searcher.js",
             "ace.js", "editor.js", "mode-rust.js", "theme-dawn.js", "theme-tomorrow_night.js"
         ];
         for file in &theme_js_files {
@@ -336,6 +340,24 @@ fn generate_html_files(output_dir: &Path, content_dir: &Path, generator_root: &P
 
     // Process all markdown files in content/
     process_directory(&content_dir.to_string_lossy(), output_dir, generator_root, lang, config, theme, output_dir);
+
+    // Generate search index
+    generate_search_index(output_dir, content_dir, generator_root, lang, config);
+
+    // Generate PWA files if enabled
+    if config.enable_pwa {
+        pwa::generate_web_app_manifest(output_dir, config);
+        pwa::generate_service_worker(output_dir, config);
+    }
+
+    // Generate i18n translations if enabled
+    if config.enable_i18n {
+        generate_i18n_translations(output_dir, lang, config);
+    }
+
+    // Load and process plugins
+    let plugin_registry = plugins::PluginRegistry::new(generator_root);
+    plugin_registry.copy_plugin_assets(output_dir, config);
 }
 
 fn generate_blog_page(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig, theme: &str) {
@@ -492,6 +514,219 @@ fn process_directory(src_dir: &str, dst_dir: &Path, generator_root: &Path, lang:
             let html = variables::render_template_with_data(&template_path, &data);
 
             fs::write(html_file, html).ok();
+        }
+    }
+}
+
+fn generate_search_index(output_dir: &Path, content_dir: &Path, generator_root: &Path, lang: &str, config: &NervaConfig) {
+    use serde_json::json;
+
+    let mut search_documents = Vec::new();
+
+    // Function to extract text from HTML
+    fn extract_text_from_html(html: &str) -> String {
+        // Simple HTML text extraction (remove tags)
+        let mut text = String::new();
+        let mut in_tag = false;
+        let mut in_script = false;
+        let mut in_style = false;
+
+        for chunk in html.split('<') {
+            if chunk.contains('>') {
+                let parts: Vec<&str> = chunk.splitn(2, '>').collect();
+                let tag_start = parts[0].to_lowercase();
+
+                if tag_start.starts_with("script") {
+                    in_script = true;
+                } else if tag_start.starts_with("/script") {
+                    in_script = false;
+                } else if tag_start.starts_with("style") {
+                    in_style = true;
+                } else if tag_start.starts_with("/style") {
+                    in_style = false;
+                } else if !in_script && !in_style && parts.len() > 1 {
+                    text.push_str(&parts[1]);
+                }
+            } else if !in_script && !in_style {
+                text.push_str(chunk);
+            }
+        }
+
+        // Clean up whitespace
+        text.lines()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    // Walk through all HTML files and extract content
+    fn collect_html_files(dir: &Path, base_dir: &Path, documents: &mut Vec<serde_json::Value>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        collect_html_files(&path, base_dir, documents);
+                    } else if path.extension().map_or(false, |ext| ext == "html") {
+                        if let Ok(content) = fs::read_to_string(&path) {
+                            let relative_path = path.strip_prefix(base_dir).unwrap_or(&path);
+                            let url = format!("/{}", relative_path.to_string_lossy().replace('\\', "/"));
+
+                            // Extract title from HTML
+                            let title = if let Some(title_start) = content.find("<title>") {
+                                if let Some(title_end) = content[title_start + 7..].find("</title>") {
+                                    content[title_start + 7..title_start + 7 + title_end].to_string()
+                                } else {
+                                    "Untitled".to_string()
+                                }
+                            } else {
+                                "Untitled".to_string()
+                            };
+
+                            // Extract text content
+                            let text_content = extract_text_from_html(&content);
+
+                            let doc = json!({
+                                "id": url.clone(),
+                                "title": title,
+                                "body": text_content,
+                                "url": url
+                            });
+
+                            documents.push(doc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    collect_html_files(output_dir, output_dir, &mut search_documents);
+
+    // Create search index JSON
+    let search_index = json!({
+        "documents": search_documents
+    });
+
+    // Write search index
+    let search_index_path = output_dir.join("search_index.json");
+    if let Ok(json_content) = serde_json::to_string_pretty(&search_index) {
+        let _ = fs::write(search_index_path, json_content);
+    }
+}
+
+fn generate_i18n_translations(output_dir: &Path, lang: &str, config: &NervaConfig) {
+    let translations = i18n::TranslationData::default();
+    let i18n_script = i18n::create_i18n_script(lang, &translations);
+
+    let i18n_path = output_dir.join("i18n.js");
+    let _ = fs::write(i18n_path, i18n_script);
+}
+
+fn handle_plugin(args: &CliArgs, logic: &NervaLogic) {
+    if args.args.is_empty() {
+        println!("🔌 NervaWeb Plugin Manager");
+        println!("Usage: nervaweb plugin <command> [options]");
+        println!();
+        println!("Commands:");
+        println!("  create <name> <type>  Create a new plugin");
+        println!("  list                  List all installed plugins");
+        println!("  info <name>           Show plugin information");
+        println!();
+        println!("Types:");
+        println!("  theme     Custom theme plugin");
+        println!("  widget    UI widget plugin");
+        println!("  extension General extension plugin");
+        println!("  processor Content processor plugin");
+        return;
+    }
+
+    let subcommand = &args.args[0];
+
+    match subcommand.as_str() {
+        "create" => {
+            if args.args.len() < 3 {
+                eprintln!("✗ Usage: nervaweb plugin create <name> <type>");
+                eprintln!("Types: theme, widget, extension, processor");
+                return;
+            }
+
+            let plugin_name = &args.args[1];
+            let plugin_type_str = &args.args[2];
+
+            let plugin_type = match plugin_type_str.as_str() {
+                "theme" => plugins::PluginType::Theme,
+                "widget" => plugins::PluginType::Widget,
+                "extension" => plugins::PluginType::Extension,
+                "processor" => plugins::PluginType::Processor,
+                _ => {
+                    eprintln!("✗ Invalid plugin type: {}", plugin_type_str);
+                    eprintln!("Valid types: theme, widget, extension, processor");
+                    return;
+                }
+            };
+
+            match plugins::create_example_plugin(plugin_name, &plugin_type) {
+                Ok(()) => println!("✅ Plugin '{}' created successfully!", plugin_name),
+                Err(e) => eprintln!("✗ Failed to create plugin: {}", e),
+            }
+        }
+        "list" => {
+            let registry = plugins::PluginRegistry::new(&logic.get_generator_root().unwrap_or_else(|_| PathBuf::from(".")));
+
+            if registry.plugins.is_empty() {
+                println!("📦 No plugins installed");
+                println!("Use 'nervaweb plugin create <name> <type>' to create your first plugin");
+            } else {
+                println!("🔌 Installed plugins:");
+                println!();
+
+                for (name, plugin) in &registry.plugins {
+                    println!("📦 {} v{} - {}", name, plugin.version, plugin.description);
+                    println!("   Type: {:?}", plugin.plugin_type);
+                    println!("   Author: {}", plugin.author);
+                    println!();
+                }
+            }
+        }
+        "info" => {
+            if args.args.len() < 2 {
+                eprintln!("✗ Usage: nervaweb plugin info <name>");
+                return;
+            }
+
+            let plugin_name = &args.args[1];
+            let registry = plugins::PluginRegistry::new(&logic.get_generator_root().unwrap_or_else(|_| PathBuf::from(".")));
+
+            if let Some(plugin) = registry.get_plugin(plugin_name) {
+                println!("🔌 Plugin Information");
+                println!("===================");
+                println!("Name: {}", plugin.name);
+                println!("Version: {}", plugin.version);
+                println!("Description: {}", plugin.description);
+                println!("Author: {}", plugin.author);
+                println!("Type: {:?}", plugin.plugin_type);
+                println!("Entry Point: {}", plugin.entry_point);
+
+                if !plugin.dependencies.is_empty() {
+                    println!("Dependencies: {}", plugin.dependencies.join(", "));
+                }
+
+                if !plugin.config.is_empty() {
+                    println!("Configuration:");
+                    for (key, value) in &plugin.config {
+                        println!("  {}: {}", key, value);
+                    }
+                }
+            } else {
+                eprintln!("✗ Plugin '{}' not found", plugin_name);
+                eprintln!("Use 'nervaweb plugin list' to see available plugins");
+            }
+        }
+        _ => {
+            eprintln!("✗ Unknown plugin command: {}", subcommand);
+            eprintln!("Use 'nervaweb plugin' for help");
         }
     }
 }

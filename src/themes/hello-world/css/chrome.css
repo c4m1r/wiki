@@ -3,6 +3,41 @@
 html {
     scrollbar-color: var(--scrollbar) var(--bg);
 }
+
+/* Visitor Counter & Ticker */
+#ticker {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-fg);
+    font-size: 12px;
+    line-height: 24px;
+    text-align: center;
+    z-index: 100;
+    border-bottom: 1px solid var(--sidebar-border);
+    font-family: var(--mono-font);
+}
+
+#visitor-counter {
+    position: fixed;
+    top: 24px;
+    right: 10px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-fg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 100;
+    border: 1px solid var(--sidebar-border);
+}
+
+/* Adjust body padding for fixed elements */
+body {
+    padding-top: 24px;
+}
 #searchresults a,
 .content a:link,
 a:visited,
@@ -594,6 +629,15 @@ ul#searchresults span.teaser em {
 }
 .theme-popup .theme:hover {
     background-color: var(--theme-hover);
+}
+
+.theme-popup.open {
+    display: block;
+}
+
+.theme-popup .theme.active {
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-fg);
 }
 
 .theme-selected::before {

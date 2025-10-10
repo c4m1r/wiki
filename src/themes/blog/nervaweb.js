@@ -605,27 +605,52 @@ function playground_text(playground, hidden = true) {
         elem.className = 'fa fa-copy tooltipped';
     }
 
-    var clipboardSnippets = new ClipboardJS('.clip-button', {
-        text: function (trigger) {
-            hideTooltip(trigger);
-            let playground = trigger.closest("pre");
-            return playground_text(playground, false);
-        }
-    });
-
     Array.from(clipButtons).forEach(function (clipButton) {
+        clipButton.addEventListener('click', function (e) {
+            e.preventDefault();
+            hideTooltip(e.currentTarget);
+
+            let playground = e.currentTarget.closest("pre");
+            let textToCopy = playground_text(playground, false);
+
+            // Use modern navigator.clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    showTooltip(e.currentTarget, "Copied!");
+                }).catch(function(err) {
+                    console.error('Failed to copy text: ', err);
+                    showTooltip(e.currentTarget, "Copy failed!");
+                });
+            } else {
+                // Fallback for older browsers or non-HTTPS
+                try {
+                    let textArea = document.createElement("textarea");
+                    textArea.value = textToCopy;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-999999px";
+                    textArea.style.top = "-999999px";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+
+                    let successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+
+                    if (successful) {
+                        showTooltip(e.currentTarget, "Copied!");
+                    } else {
+                        showTooltip(e.currentTarget, "Copy failed!");
+                    }
+                } catch (err) {
+                    console.error('Fallback copy failed: ', err);
+                    showTooltip(e.currentTarget, "Copy failed!");
+                }
+            }
+        });
+
         clipButton.addEventListener('mouseout', function (e) {
             hideTooltip(e.currentTarget);
         });
-    });
-
-    clipboardSnippets.on('success', function (e) {
-        e.clearSelection();
-        showTooltip(e.trigger, "Copied!");
-    });
-
-    clipboardSnippets.on('error', function (e) {
-        showTooltip(e.trigger, "Clipboard error!");
     });
 })();
 

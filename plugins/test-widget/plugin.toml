@@ -1,0 +1,9 @@
+name = "test-widget"
+version = "1.0.0"
+description = "Example widget plugin"
+author = "NervaWeb User"
+plugin_type = "widget"
+entry_point = "test-widget.js"
+dependencies = []
+
+[config]

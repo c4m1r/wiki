@@ -34,7 +34,7 @@
         <link rel="icon" type="image/png" sizes="32x32" href="{{ path_to_root }}favicon/favicon-32x32.png">
         <link rel="icon" type="image/png" sizes="96x96" href="{{ path_to_root }}favicon/favicon-96x96.png">
         <link rel="icon" type="image/png" sizes="16x16" href="{{ path_to_root }}favicon/favicon-16x16.png">
-        <link rel="manifest" href="{{ path_to_root }}favicon/manifest.json">
+        <link rel="manifest" href="{{ path_to_root }}site.webmanifest">
         <meta name="msapplication-TileColor" content="#ffffff">
         <meta name="msapplication-TileImage" content="{{ path_to_root }}favicon/ms-icon-144x144.png">
         <meta name="theme-color" content="#ffffff">
@@ -347,8 +347,10 @@
         <script src="{{ path_to_root }}searcher.js"></script>
         {{/if}}
 
-        <script src="{{ path_to_root }}clipboard.min.js"></script>
         <script src="{{ path_to_root }}highlight.js"></script>
+        {{#if enable_i18n}}
+        <script src="{{ path_to_root }}i18n.js"></script>
+        {{/if}}
         <script src="{{ path_to_root }}nervaweb.js"></script>
 
         <!-- Custom JS scripts -->
@@ -372,6 +374,23 @@
         });
         </script>
         {{/if}}
+        {{/if}}
+
+        {{#if enable_pwa}}
+        <!-- Service Worker Registration for PWA -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('{{ path_to_root }}sw.js')
+                        .then(function(registration) {
+                            console.log('[SW] Registered:', registration);
+                        })
+                        .catch(function(error) {
+                            console.log('[SW] Registration failed:', error);
+                        });
+                });
+            }
+        </script>
         {{/if}}
 
     </div>

@@ -162,6 +162,78 @@
         });
     }
 
+    // --- THEME SWITCHER MODULE ---
+    if (window.NervaWeb.config.enable_theme_switcher !== false) {
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeList = document.getElementById('theme-list');
+
+            if (themeToggle && themeList) {
+                // Load saved theme
+                let currentTheme = localStorage.getItem('nervaweb-theme') ||
+                                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+                // Apply current theme
+                document.documentElement.classList.remove('light', 'dark', 'dnd');
+                document.documentElement.classList.add(currentTheme);
+
+                // Update active theme button
+                const themeButtons = themeList.querySelectorAll('.theme');
+                themeButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.id === currentTheme);
+                });
+
+                // Toggle theme menu
+                themeToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    themeList.classList.toggle('open');
+                    const isExpanded = themeList.classList.contains('open');
+                    themeToggle.setAttribute('aria-expanded', isExpanded);
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!themeToggle.contains(e.target) && !themeList.contains(e.target)) {
+                        themeList.classList.remove('open');
+                        themeToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                // Handle theme selection
+                themeButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const selectedTheme = this.id;
+
+                        // Remove all theme classes
+                        document.documentElement.classList.remove('light', 'dark', 'dnd');
+
+                        // Add selected theme
+                        document.documentElement.classList.add(selectedTheme);
+
+                        // Save to localStorage
+                        localStorage.setItem('nervaweb-theme', selectedTheme);
+
+                        // Update active button
+                        themeButtons.forEach(btn => {
+                            btn.classList.toggle('active', btn.id === selectedTheme);
+                        });
+
+                        // Close menu
+                        themeList.classList.remove('open');
+                        themeToggle.setAttribute('aria-expanded', 'false');
+
+                        // Dispatch custom event for theme change
+                        window.dispatchEvent(new CustomEvent('themeChanged', {
+                            detail: { theme: selectedTheme }
+                        }));
+                    });
+                });
+            }
+
+            window.NervaWeb.modules.push('themeSwitcher');
+        });
+    }
+
     // --- SEARCH MODULE ---
     if (window.NervaWeb.config.enable_search !== false) {
         document.addEventListener('DOMContentLoaded', function() {
@@ -169,6 +241,11 @@
             const input = document.getElementById('es-search-input');
             const overlay = document.getElementById('es-search-overlay');
             const soundToggle = document.getElementById('sound-toggle');
+
+            // Set placeholder text from i18n
+            if (input && window.NervaWeb && window.NervaWeb.i18n) {
+                input.placeholder = window.NervaWeb.i18n.t('search_placeholder');
+            }
 
             let soundEnabled = false;
             let soundCount = 0;
@@ -239,46 +316,104 @@
         });
 
         function performSearch(query) {
-            const esHost = 'https://example.com'; // replace with your Elasticsearch endpoint
-            fetch(`${esHost}/content/_search?q=${encodeURIComponent(query)}&size=50`)
-                .then((res) => res.json())
-                .then((data) => {
-                    const hits = data.hits && data.hits.hits ? data.hits.hits : [];
-                    const resultsContainer = document.getElementById('search-results');
-                    const topContainer = document.getElementById('top-articles');
-                    resultsContainer.innerHTML = '';
-                    const counts = {};
-                    hits.forEach((hit) => {
-                        const source = hit._source || {};
-                        const title = source.title || hit._id;
-                        const url = source.url || '#';
-                        const count = hit._score || 1;
-                        counts[title] = (counts[title] || 0) + count;
-                        const item = document.createElement('div');
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.textContent = title;
-                        item.appendChild(link);
-                        resultsContainer.appendChild(item);
+            if (!window.elasticlunr) {
+                console.error('ElasticLunr not loaded');
+                return;
+            }
+
+            // Load search index
+            fetch('./search_index.json')
+                .then(res => res.json())
+                .then(data => {
+                    // Create index
+                    const index = window.elasticlunr(function () {
+                        this.addField('title');
+                        this.addField('body');
+                        this.setRef('id');
                     });
 
-                    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-                    const max = sorted.length ? sorted[0][1] : 1;
-                    const min = sorted.length ? sorted[sorted.length - 1][1] : 0;
-                    const range = Math.max(max - min, 1);
-                    topContainer.innerHTML = '';
-                    sorted.forEach(([title, count]) => {
-                        const item = document.createElement('div');
-                        const size = 1 + 0.1 * (count - min) / range;
-                        item.style.fontSize = size + 'em';
-                        item.textContent = `${title} (${count})`;
-                        topContainer.appendChild(item);
+                    // Add documents to index
+                    data.documents.forEach(doc => {
+                        index.addDoc(doc);
                     });
+
+                    // Perform search
+                    const results = index.search(query, {
+                        fields: {
+                            title: {boost: 2},
+                            body: {boost: 1}
+                        },
+                        expand: true
+                    });
+
+                    const resultsContainer = document.getElementById('search-results');
+                    const topContainer = document.getElementById('top-articles');
+
+                    resultsContainer.innerHTML = '';
+                    topContainer.innerHTML = '';
+
+                    if (results.length === 0) {
+                        const noResultsText = window.NervaWeb && window.NervaWeb.i18n ?
+                            window.NervaWeb.i18n.t('no_results') : 'No results found';
+                        resultsContainer.innerHTML = `<div>${noResultsText}</div>`;
+                        return;
+                    }
+
+                    // Display results
+                    results.slice(0, 20).forEach(result => {
+                        const doc = data.documents.find(d => d.id === result.ref);
+                        if (doc) {
+                            const item = document.createElement('div');
+                            item.className = 'search-result-item';
+                            item.innerHTML = `
+                                <a href="${doc.url}" class="search-result-link">
+                                    <div class="search-result-title">${doc.title}</div>
+                                </a>
+                                <div class="search-result-score">Score: ${result.score.toFixed(2)}</div>
+                            `;
+                            resultsContainer.appendChild(item);
+                        }
+                    });
+
+                    // Create tag cloud from top results
+                    const titleCounts = {};
+                    results.slice(0, 10).forEach(result => {
+                        const doc = data.documents.find(d => d.id === result.ref);
+                        if (doc && doc.title) {
+                            const words = doc.title.toLowerCase().split(/\s+/);
+                            words.forEach(word => {
+                                if (word.length > 3) { // Skip short words
+                                    titleCounts[word] = (titleCounts[word] || 0) + 1;
+                                }
+                            });
+                        }
+                    });
+
+                    const sortedWords = Object.entries(titleCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 15);
+
+                    if (sortedWords.length > 0) {
+                        const maxCount = sortedWords[0][1];
+                        const minCount = sortedWords[sortedWords.length - 1][1];
+                        const range = Math.max(maxCount - minCount, 1);
+
+                        sortedWords.forEach(([word, count]) => {
+                            const item = document.createElement('span');
+                            const size = 1 + 0.5 * (count - minCount) / range;
+                            item.style.fontSize = size + 'em';
+                            item.style.margin = '2px';
+                            item.style.display = 'inline-block';
+                            item.textContent = word;
+                            topContainer.appendChild(item);
+                        });
+                    }
                 })
-                .catch(() => {
+                .catch(err => {
+                    console.error('Search error:', err);
                     const resultsContainer = document.getElementById('search-results');
                     if (resultsContainer) {
-                        resultsContainer.textContent = 'Search error';
+                        resultsContainer.textContent = 'Search failed to load index';
                     }
                 });
         }
